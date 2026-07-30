@@ -5,33 +5,6 @@ import { Container } from "@/components/Container";
 import { Section } from "@/components/Section";
 import { QuestionPanel } from "@/components/ask/QuestionPanel";
 import { RecentQuestions } from "@/components/ask/RecentQuestions";
-import { QUESTION_EXAMPLES, RECENT_QUESTIONS } from "@/lib/ask/mock";
-import type { RecentQuestion } from "@/types/question";
-
-/**
- * /ask — the question interface (Phase 3A).
- *
- * - Renders the QuestionPanel + RecentQuestions side by side
- * - On submit, logs the question to the console and prepends a transient
- *   "Echoed" line so the user gets visible feedback in the browser too
- * - No AI, no retrieval, no Paritok — those land in Phase 3B / 3C
- */
-export default function AskPage() {
-  // The most recent repository the user analyzed (kept in sessionStorage so
-  // navigating away and back still works). Phase 3B will replace this with
-  // a real context derived from the analysis result.
-  const [repoLabel, setRepoLabel] = useState<string | null>(null);
-  const [echo, setEcho] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-"use client";
-
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Container } from "@/components/Container";
-import { Section } from "@/components/Section";
-import { QuestionPanel } from "@/components/ask/QuestionPanel";
-import { RecentQuestions } from "@/components/ask/RecentQuestions";
 import { RankingResults } from "@/components/ask/RankingResults";
 import { QUESTION_EXAMPLES, RECENT_QUESTIONS } from "@/lib/ask/mock";
 import {
