@@ -1,9 +1,9 @@
 /**
- * Public surface of the local ranking engine (Phase 3C1).
+ * Public surface of the local ranking engine (Phase 3C1 + 3C2).
  *
  * Consumers should import from `@/lib/ranking` rather than reaching into
- * the individual files. The internal layout (scoring, tokens) is
- * deliberately not exported so the engine can be refactored in later
+ * the individual files. The internal layout (scoring, tokens, explain) is
+ * deliberately not fully exported so the engine can be refactored in later
  * phases without breaking downstream callers.
  *
  * This module is independent from the retrieval engine (Phase 3B): they
@@ -12,6 +12,7 @@
  */
 
 export { rankRelevantFiles } from "./rank";
+export { explainRank } from "./explain";
 export {
   scoreFilename,
   scoreFolder,
@@ -26,3 +27,9 @@ export {
   tokenizeFolder,
 } from "./tokens";
 export { mockIndexedFiles, mockAuthRepo } from "./mock";
+export {
+  rankingCacheGet,
+  rankingCacheSet,
+  rankingCacheClear,
+  rankingCacheKey,
+} from "./cache";
