@@ -101,7 +101,9 @@ docs/        # Additional documentation
 |------:|-------|--------|
 | **1** | Project foundation & scaffolding (UI shell, design system, docs) | ✅ Done |
 | **2** | GitHub repository ingestion + smart retrieval of relevant files | ✅ Done |
-| **3** | Paritok integration, OpenAI Q&A, prompt analytics dashboard | 🔜 Planned |
+| **3A** | Question interface (textarea, examples, char counter, recent list) | ✅ Done |
+| **3B** | Paritok-powered retrieval + OpenAI Q&A | 🔜 Planned |
+| **3C** | Prompt analytics dashboard | 🔜 Planned |
 | **4** | Polish, deploy, demo for hackathon submission | 🔜 Planned |
 
 ---
@@ -123,11 +125,14 @@ npm run format
 
 Then open <http://localhost:3000>.
 
-> The current build renders the home, about, and analyze pages. Phase 2
+> The current build renders the home, about, analyze, and ask pages. Phase 2
 > fetches repository metadata + tree from the GitHub API, filters out noise
 > (binaries, lockfiles, build output, etc.), and provides local search.
+> Phase 3A adds the question interface at `/ask` — a focused developer panel
+> with a large textarea, example prompts, character counter, and a sidebar
+> of recent questions. Submissions are echoed to the browser console only;
 > Paritok optimization and AI Q&A are intentionally not implemented yet —
-> they arrive in Phase 3.
+> they arrive in Phase 3B.
 
 ---
 
