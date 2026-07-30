@@ -83,4 +83,4 @@ export function rankingCacheSet(key: string, result: RankResult): void {
 export function rankingCacheClear(): void {
   if (typeof window === "undefined") return;
   writeAll({ entries: {}, order: [] });
-      }
+}
