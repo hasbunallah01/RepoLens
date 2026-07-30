@@ -24,7 +24,7 @@ export function Hero() {
       </p>
 
       <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-        <Button size="lg" aria-label="Analyze a repository (coming soon)">
+        <Button href="/analyze" size="lg">
           Analyze Repository
         </Button>
         <Button href="/about" variant="secondary" size="lg">

@@ -128,7 +128,10 @@ export default function HomePage() {
               now, take a look at the project vision and the planned roadmap.
             </p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-              <Button href="/about" size="lg">
+              <Button href="/analyze" size="lg">
+                Try the analyzer
+              </Button>
+              <Button href="/about" variant="secondary" size="lg">
                 Read the vision
               </Button>
             </div>

@@ -29,20 +29,32 @@ optimize that context through Paritok before any model is called.
 │                        Next.js 15 App                       │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
 │  │  Home / About│  │  Analyze UI  │  │   API Routes      │  │
-│  │  (Phase 1 ✓) │  │  (Phase 2)   │  │  /api/health ✓    │  │
+│  │  (Phase 1 ✓) │  │  (Phase 2 ✓) │  │  /api/health ✓    │  │
+│  │              │  │              │  │  /api/analyze ✓   │  │
 │  └──────────────┘  └──────────────┘  └──────────────┬──────┘  │
 └─────────────────────────────────────────────────────┼────────┘
                                                       │
                   ┌───────────────────────────────────┘
                   ▼
         ┌─────────────────────┐
-        │  Retrieval Engine   │  ◀── GitHub API (Phase 2)
-        │  (file selection)   │
+        │  GitHub API Client  │  ◀── Phase 2 ✓
+        │  (metadata+tree)    │      metadata, tree, commits
         └──────────┬──────────┘
                    │
                    ▼
         ┌─────────────────────┐
-        │  Paritok Optimizer  │  ◀── Paritok API (Phase 2/3)
+        │  Indexer            │  ◀── Phase 2 ✓
+        │  (filter + language)│      ignore rules, language map
+        └──────────┬──────────┘
+                   │
+                   ▼
+        ┌─────────────────────┐
+        │  Local Search       │  ◀── Phase 2 ✓
+        └──────────┬──────────┘
+                   │
+                   ▼
+        ┌─────────────────────┐
+        │  Paritok Optimizer  │  ◀── Paritok API (Phase 3)
         │  (token reduction)  │
         └──────────┬──────────┘
                    │
@@ -61,14 +73,20 @@ optimize that context through Paritok before any model is called.
 
 - **Frontend:** Next.js 15 (App Router) · TypeScript (strict) · Tailwind CSS
 - **Backend:** Next.js API Routes
-- **Future integrations (placeholders in Phase 1):** GitHub API · Paritok · OpenAI
+- **Phase 2 integrations:** GitHub REST API (metadata, tree, commits)
+- **Future integrations (placeholders in Phase 1):** Paritok · OpenAI
 
 ### Repository Layout
 
 ```
-app/         # App Router routes (home, about, future /analyze, /chat)
-components/  # Reusable presentational components
-lib/         # Pure utilities and integration placeholders
+app/         # App Router routes (home, about, analyze, api/analyze)
+components/  # Reusable presentational + analyze components
+lib/         # Pure utilities
+  github/    # URL parser, API client, typed endpoints
+  indexer/   # Ignore rules, language map, build-index
+  search/    # Local file search
+  cache.ts   # Session-scoped result cache
+hooks/       # useRepoAnalysis
 types/       # Shared TypeScript types
 public/      # Static assets
 styles/      # Global styles (currently in app/globals.css)
@@ -81,8 +99,8 @@ docs/        # Additional documentation
 
 | Phase | Scope | Status |
 |------:|-------|--------|
-| **1** | Project foundation & scaffolding (UI shell, design system, docs) | ✅ In progress |
-| **2** | GitHub repository ingestion + smart retrieval of relevant files | 🔜 Planned |
+| **1** | Project foundation & scaffolding (UI shell, design system, docs) | ✅ Done |
+| **2** | GitHub repository ingestion + smart retrieval of relevant files | ✅ Done |
 | **3** | Paritok integration, OpenAI Q&A, prompt analytics dashboard | 🔜 Planned |
 | **4** | Polish, deploy, demo for hackathon submission | 🔜 Planned |
 
@@ -105,9 +123,11 @@ npm run format
 
 Then open <http://localhost:3000>.
 
-> The current build only renders the home and about pages. Analysis,
-> Paritok optimization, and AI Q&A are intentionally not implemented yet —
-> they arrive in Phase 2 and Phase 3.
+> The current build renders the home, about, and analyze pages. Phase 2
+> fetches repository metadata + tree from the GitHub API, filters out noise
+> (binaries, lockfiles, build output, etc.), and provides local search.
+> Paritok optimization and AI Q&A are intentionally not implemented yet —
+> they arrive in Phase 3.
 
 ---
 

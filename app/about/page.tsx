@@ -79,6 +79,9 @@ export default function AboutPage() {
               with prompt analytics.
             </p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+              <Button href="/analyze" size="lg">
+                Try the analyzer
+              </Button>
               <Button href="/" variant="secondary" size="lg">
                 Back to home
               </Button>
