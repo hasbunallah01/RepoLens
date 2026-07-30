@@ -55,7 +55,7 @@ export function rankingCacheKey(
 ): string {
   const q = question.trim().toLowerCase();
   const paths = [...candidatePaths].sort().join("|");
-  return `\( {q}:: \){paths}`;
+  return `${q}::${paths}`;
 }
 
 export function rankingCacheGet(key: string): RankResult | null {

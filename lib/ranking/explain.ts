@@ -67,7 +67,7 @@ export function explainRank(
       signals[secondary],
     );
     if (secondaryText && secondaryText !== primaryText) {
-      return `${primaryText} Also: \( {secondaryText.charAt(0).toLowerCase()} \){secondaryText.slice(1)}`;
+      return `${primaryText} Also: ${secondaryText.charAt(0).toLowerCase()}${secondaryText.slice(1)}`;
     }
   }
 
