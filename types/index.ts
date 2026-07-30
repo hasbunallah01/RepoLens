@@ -18,3 +18,12 @@ export interface NavLink {
   label: string;
   href: string;
 }
+
+// Re-export retrieval types so consumers can `import type { RetrievalMatch } from "@/types"`.
+export type {
+  RetrievalMatch,
+  RetrievalResult,
+  RetrievalOptions,
+  RetrievalSignalWeights,
+} from "./retrieval";
+export { DEFAULT_RETRIEVAL_WEIGHTS } from "./retrieval";
