@@ -1,5 +1,5 @@
 /**
- * Domain types for Phase 3C1 — the local ranking engine.
+ * Domain types for Phase 3C1 / 3C2 — the local ranking engine.
  *
  * The ranking engine is a thin, pluggable layer that re-orders the files
  * returned by the retrieval engine. It is intentionally model-free: no
@@ -11,9 +11,9 @@
  *     separately.
  *   - Easy for future phases to add more scoring signals (just add a new
  *     weight to {@link RankSignalWeights} and a new scorer).
- *   - Output shape is stable: a list of `{ file, score }` pairs sorted
- *     from highest score to lowest. The brief explicitly does not ask
- *     for explanations yet.
+ *   - Output shape is stable: a list of `{ file, score, reason }` pairs
+ *     sorted from highest score to lowest. Phase 3C2 adds the human-
+ *     readable `reason` for UI explainability.
  */
 
 import type { IndexedFile } from "./repository";
@@ -24,11 +24,17 @@ import type { IndexedFile } from "./repository";
  * `score` is a normalized 0–100 integer where 100 = best possible match
  * given the question. The score is the weighted blend of the four active
  * signals (filename, folder, keyword frequency, extension).
+ *
+ * `reason` is a short (1–2 line) human-readable explanation of why the
+ * file ranked where it did, derived deterministically from the scoring
+ * signals — never from an AI model.
  */
 export interface RankedFile {
   file: IndexedFile;
   /** Normalized relevance score in the inclusive range [0, 100]. */
   score: number;
+  /** Short human-readable explanation of the ranking signal(s). */
+  reason: string;
 }
 
 /** A ranking engine response. */
