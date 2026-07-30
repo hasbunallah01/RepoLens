@@ -204,4 +204,4 @@ function extensionReason(
     return `File extension is appropriate for the requested topic (docs .${ext}).`;
   }
   return `File extension is appropriate for the requested topic (.${ext}).`;
-                                }
+}
