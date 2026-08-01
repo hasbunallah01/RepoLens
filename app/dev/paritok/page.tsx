@@ -62,8 +62,10 @@ type DevApiResponse = DevApiSuccess | DevApiFailure;
 
 type PipelineStatus =
   | { kind: "idle" }
-  | { kind: "ok" }
+  | { kind: "ok"; preview: string; truncated: boolean }
   | { kind: "error"; message: string };
+
+const PREVIEW_LIMIT = 300;
 
 export default function DevParitokPage() {
   const [state, setState] = useState<DevState>({ kind: "idle" });
@@ -103,15 +105,18 @@ export default function DevParitokPage() {
   }, [question]);
 
   /**
-   * Phase 4B2a/4B2b/4B2c — invokes the existing `compressContext()`
+   * Phase 4B2a/4B2b/4B2c/4B3a — invokes the existing `compressContext()`
    * pipeline directly (rank → Context Builder → Paritok).
    *
    * - 4B2b: button is disabled while the pipeline runs and shows a
    *   "Compressing..." spinner.
-   * - 4B2c: a small success/failure badge is rendered below the
+   * - 4B2c: a small success/failure badge is rendered next to the
    *   button when the request finishes. The previous badge is
-   *   cleared when a new request starts. No compressed content /
-   *   token stats are shown.
+   *   cleared when a new request starts.
+   * - 4B3a: on success, the first 300 chars of the compressed content
+   *   are stored in the status and rendered as a read-only dev-style
+   *   "Compressed Context Preview" card. The full response is never
+   *   shown.
    */
   const runPipeline = useCallback(async () => {
     setPipelineLoading(true);
@@ -131,7 +136,15 @@ export default function DevParitokPage() {
         },
       );
       if (result.compressed.ok) {
-        setPipelineStatus({ kind: "ok" });
+        const full = result.compressed.data.compressed;
+        const truncated = full.length > PREVIEW_LIMIT;
+        setPipelineStatus({
+          kind: "ok",
+          preview: truncated
+            ? `${full.slice(0, PREVIEW_LIMIT)}...`
+            : full,
+          truncated,
+        });
       } else {
         setPipelineStatus({
           kind: "error",
@@ -213,6 +226,13 @@ export default function DevParitokPage() {
               </span>
             </div>
           </div>
+
+          {pipelineStatus.kind === "ok" ? (
+            <CompressedContextPreview
+              preview={pipelineStatus.preview}
+              truncated={pipelineStatus.truncated}
+            />
+          ) : null}
 
           <div className="mt-8">
             {state.kind === "idle" && (
@@ -367,5 +387,36 @@ function CompressionStatus({ status }: { status: PipelineStatus }) {
         <span className="text-xs text-navy-400">{status.message}</span>
       ) : null}
     </span>
+  );
+}
+
+/**
+ * Phase 4B3a — dev-style read-only card showing the first 300
+ * characters of the compressed content returned by Paritok. Only
+ * rendered after a successful compression (and cleared on the next
+ * run). The full response and any token statistics are deliberately
+ * never shown.
+ */
+function CompressedContextPreview({
+  preview,
+  truncated,
+}: {
+  preview: string;
+  truncated: boolean;
+}) {
+  return (
+    <div className="mt-8 rounded-lg border border-navy-800 bg-navy-950/60 p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-navy-200">
+          Compressed Context Preview
+        </h2>
+        <span className="text-[10px] uppercase tracking-wide text-navy-500">
+          {truncated ? "first 300 chars" : "full payload"}
+        </span>
+      </div>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-navy-800 bg-navy-950 p-3 font-mono text-xs leading-relaxed text-navy-100">
+        {preview}
+      </pre>
+    </div>
   );
 }
