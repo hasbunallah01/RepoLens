@@ -60,10 +60,18 @@ interface DevApiFailure {
 
 type DevApiResponse = DevApiSuccess | DevApiFailure;
 
+type PipelineStatus =
+  | { kind: "idle" }
+  | { kind: "ok" }
+  | { kind: "error"; message: string };
+
 export default function DevParitokPage() {
   const [state, setState] = useState<DevState>({ kind: "idle" });
   const [question, setQuestion] = useState("How does authentication work?");
   const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>({
+    kind: "idle",
+  });
 
   const run = useCallback(async () => {
     setState({ kind: "loading" });
@@ -95,22 +103,45 @@ export default function DevParitokPage() {
   }, [question]);
 
   /**
-   * Phase 4B2a/4B2b — invokes the existing `compressContext()` pipeline
-   * directly (rank → Context Builder → Paritok). Phase 4B2b adds a
-   * loading state: while the pipeline is running, the button is
-   * disabled, the text changes to "Compressing…", and a spinner is
-   * shown. No success/failure UI, no compressed-data display.
+   * Phase 4B2a/4B2b/4B2c — invokes the existing `compressContext()`
+   * pipeline directly (rank → Context Builder → Paritok).
+   *
+   * - 4B2b: button is disabled while the pipeline runs and shows a
+   *   "Compressing..." spinner.
+   * - 4B2c: a small success/failure badge is rendered below the
+   *   button when the request finishes. The previous badge is
+   *   cleared when a new request starts. No compressed content /
+   *   token stats are shown.
    */
   const runPipeline = useCallback(async () => {
     setPipelineLoading(true);
+    setPipelineStatus({ kind: "idle" });
     try {
       const { ranked } = rankRelevantFiles(question, mockIndexedFiles, {
         limit: 5,
       });
-      await compressContext(question, ranked, mockRepository, {
-        contentSource: "inline",
-        contents: mockFileContents,
-        limit: 5,
+      const result = await compressContext(
+        question,
+        ranked,
+        mockRepository,
+        {
+          contentSource: "inline",
+          contents: mockFileContents,
+          limit: 5,
+        },
+      );
+      if (result.compressed.ok) {
+        setPipelineStatus({ kind: "ok" });
+      } else {
+        setPipelineStatus({
+          kind: "error",
+          message: result.compressed.error.message,
+        });
+      }
+    } catch (err) {
+      setPipelineStatus({
+        kind: "error",
+        message: err instanceof Error ? err.message : "Unknown error",
       });
     } finally {
       setPipelineLoading(false);
@@ -173,6 +204,7 @@ export default function DevParitokPage() {
                   "Compress with Paritok"
                 )}
               </Button>
+              <CompressionStatus status={pipelineStatus} />
               <span className="text-xs text-navy-400">
                 Endpoint:&nbsp;
                 <code className="text-navy-200">
@@ -297,5 +329,43 @@ function Field({ label, value }: { label: string; value: string }) {
         <code>{value}</code>
       </dd>
     </div>
+  );
+}
+
+/**
+ * Phase 4B2c — minimal visual feedback for the "Compress with Paritok"
+ * pipeline. Renders nothing until the pipeline finishes; then either a
+ * green "Compression completed" badge or a red "Compression failed"
+ * badge appears below the button. If the pipeline surfaced an error
+ * message, it is rendered underneath in small muted text. The
+ * compressed payload and any token statistics are deliberately never
+ * shown here.
+ */
+function CompressionStatus({ status }: { status: PipelineStatus }) {
+  if (status.kind === "idle") return null;
+
+  if (status.kind === "ok") {
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center rounded-full border border-emerald-700/40 bg-emerald-900/30 px-2.5 py-0.5 text-xs font-medium text-emerald-300"
+      >
+        ✓ Compression completed
+      </span>
+    );
+  }
+
+  return (
+    <span
+      role="status"
+      className="inline-flex flex-col items-start gap-1"
+    >
+      <span className="inline-flex items-center rounded-full border border-rose-700/40 bg-rose-900/30 px-2.5 py-0.5 text-xs font-medium text-rose-300">
+        ✗ Compression failed
+      </span>
+      {status.message ? (
+        <span className="text-xs text-navy-400">{status.message}</span>
+      ) : null}
+    </span>
   );
 }
