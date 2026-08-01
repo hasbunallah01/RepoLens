@@ -17,9 +17,7 @@
  *     ↓ Existing `fetchRankedFileContents()`
  *     ↓ Existing `buildProductionContextFromMetadata()`
  *     ↓ Existing `compressContextPackage()` (Paritok)
- *
- * OpenAI is intentionally NOT called yet — Paritok is the only
- * optimisation engine wired into this milestone (Backend 7B.1).
+ *     ↓ Existing `generateAnswer()` (OpenAI)
  *
  * The base response envelope is unchanged (see `lib/api` for the
  * full contract):
@@ -27,15 +25,15 @@
  *   { ok: false, error: { code: AnalysisErrorCode, message, status? } }
  *
  * When `question` is supplied, the success body gains extra
- * `package` and `compression` fields so the call site can inspect
- * what was built and what Paritok returned, without changing the
- * shape existing consumers rely on.
+ * `package`, `compression`, and `answer` fields so the call site
+ * can inspect what was built and what the model produced, without
+ * changing the shape existing consumers rely on.
  *
  * Status codes:
  *   200 — success
  *   400 — invalid `url` query parameter
  *   500 — unexpected internal error (sanitised, no stack trace)
- *   502 — upstream GitHub or Paritok error (status echoed from upstream)
+ *   502 — upstream GitHub, Paritok, or OpenAI error (status echoed)
  *   503 — missing required environment variable
  */
 
@@ -52,6 +50,7 @@ import {
 } from "@/lib/ranking";
 import { buildProductionContextFromMetadata } from "@/lib/context";
 import { compressContextPackage } from "@/lib/paritok";
+import { generateAnswer } from "@/lib/openai";
 import { createRequestLogger } from "@/lib/log";
 import type { AnalysisResult } from "@/types/repository";
 
@@ -242,8 +241,8 @@ export const GET = withApiHandler(async (request: Request) => {
     // extra top-level fields on the success body so existing
     // consumers (and the dashboard) keep working unchanged. A
     // future milestone can promote these to the canonical
-    // response shape once the rest of the AI pipeline (OpenAI) is
-    // wired in.
+    // response shape once the rest of the AI pipeline is wired
+    // in.
     //
     // `compression` carries the minimum the call site needs to
     // verify the round-trip: the Paritok `ok` flag, the returned
@@ -259,6 +258,44 @@ export const GET = withApiHandler(async (request: Request) => {
       compressedText.length <= COMPRESSION_PREVIEW_LIMIT
         ? compressedText
         : `${compressedText.slice(0, COMPRESSION_PREVIEW_LIMIT)}…`;
+
+    // ----------------------------------------------------------------
+    //  OpenAI answer generation (Backend 7B.2)
+    //  Hands the Paritok-compressed text + the user's question to
+    //  the existing `generateAnswer()` service. We pass the
+    //  compressed context through unchanged so OpenAI receives
+    //  exactly what Paritok produced — no re-encoding, no extra
+    //  prompt layer. The existing OpenAI client already handles
+    //  its own retries, timeouts, env config, and Result envelope.
+    // ----------------------------------------------------------------
+    log.logStage("openai_request_started", {
+      compressedLength: compressedText.length,
+    });
+    const openaiStart = Date.now();
+    const ai = await generateAnswer({
+      context: compressedText,
+      question,
+    });
+    log.logStageWithDuration("openai_response_received", Date.now() - openaiStart, {
+      ok: ai.ok,
+      model: ai.ok ? ai.model : undefined,
+    });
+
+    if (!ai.ok) {
+      // Mirror the existing upstream-error pattern: surface the
+      // service error with its natural HTTP status so the client
+      // can branch on it without a translation layer.
+      log.logStage("response_returned", {
+        status: ai.error.status ?? 502,
+        code: ai.error.code,
+      });
+      return errorResponse(
+        ai.error.code,
+        ai.error.message,
+        ai.error.status ?? 502,
+        { status: ai.error.status },
+      );
+    }
 
     log.logStage("response_returned", { status: 200 });
     return NextResponse.json(
@@ -282,6 +319,11 @@ export const GET = withApiHandler(async (request: Request) => {
           compressedPreview,
         },
         paritok: compressed.data,
+        answer: {
+          text: ai.answer,
+          model: ai.model,
+          usage: ai.usage,
+        },
       },
       { status: 200 },
     );
