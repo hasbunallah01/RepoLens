@@ -180,4 +180,18 @@ describe("mockAuthRepo demo", () => {
     expect(top).toBeDefined();
     expect(top!.file.path).toBe("src/auth/auth.service.ts");
   });
+
+  it("returns README.md for a natural repository-overview question", () => {
+    // "What does this repository do?" strips to a single surviving token
+    // ("repository") after stopword removal. Before the fix, this caused
+    // every file to score 0 and rankedCount collapsed to zero, which
+    // broke Context Builder -> Paritok (HTTP 400 "Missing 'content' to
+    // compress"). The README boost must fire on the surviving intent
+    // token so the overview question returns a non-empty ranking.
+    const { result } = mockAuthRepo("What does this repository do?", {
+      limit: 5,
+    });
+    expect(result.ranked.length).toBeGreaterThan(0);
+    expect(result.ranked[0]!.file.path).toBe("README.md");
+  });
 });

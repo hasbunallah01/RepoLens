@@ -247,8 +247,23 @@ export function scoreExtension(
     if (qSet.has("readme") || docKeywords.some((k) => qSet.has(k))) {
       return 100;
     }
-    if (qSet.has("what") || qSet.has("how") || qSet.has("project")) {
-      return 60;
+    // Natural overview questions ("What does this repository do?",
+    // "What is this project about?") are reduced to a single surviving
+    // token (e.g. "repository", "project") once stopwords are removed,
+    // so we also fire the README boost for any repository-/project-flavoured
+    // intent token. This is the smallest possible fix that keeps the
+    // ranking engine from collapsing natural overview questions to zero
+    // results. We return 100 (same as the docKeywords branch above)
+    // because for a pure overview question with no other signal the
+    // README is unambiguously the best answer; more-specific files with
+    // matching filenames/paths will still beat it via the other signals.
+    const overviewIntent = [
+      "repository", "repositori", "repo", "project", "codebase",
+      "codebas", "app", "application", "tool", "library",
+      "servic", "service", "summary", "about",
+    ];
+    if (overviewIntent.some((k) => qSet.has(k))) {
+      return 100;
     }
   }
 
