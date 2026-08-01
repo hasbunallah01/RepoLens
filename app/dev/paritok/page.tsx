@@ -1,5 +1,5 @@
 /**
- * /dev/paritok — dev-only mock page (Phase 4A).
+ * /dev/paritok — dev-only mock page (Phases 4A, 4B, 5B).
  *
  * Runs the Paritok compression service end-to-end against the
  * mock auth repo and shows the result in the browser so the
@@ -8,12 +8,14 @@
  *   - the API key loaded from the environment,
  *   - the request reached Paritok,
  *   - the compressed response came back,
- *   - the GPU availability flag is reported.
+ *   - the GPU availability flag is reported,
+ *   - the OpenAI service is wired in behind the compression
+ *     pipeline and produces a grounded answer (Phase 5B).
  *
  * This page is **not** linked from the main navigation. It is
  * intended for local development only and will be removed (or
- * gated behind a feature flag) in Phase 4B once the real
- * ask pipeline replaces it.
+ * gated behind a feature flag) once the real ask pipeline
+ * replaces it.
  */
 
 "use client";
@@ -71,6 +73,40 @@ type PipelineStatus =
     }
   | { kind: "error"; message: string };
 
+/**
+ * Phase 5B — UI state for the AI Answer card. The discriminated
+ * shape mirrors the OpenAI service result so the card and the
+ * network call stay trivially in sync.
+ *
+ *   - `idle`    — no compression has succeeded yet, or the user
+ *                 re-ran compression and we are about to refetch.
+ *   - `loading` — a request to `/api/dev/openai` is in flight.
+ *   - `ok`      — the service returned a non-empty answer.
+ *   - `error`   — the service failed (missing key, network,
+ *                 upstream error, malformed response). The card
+ *                 shows "Unable to generate answer" plus the
+ *                 error message underneath.
+ */
+type AnswerStatus =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "ok"; answer: string; model: string }
+  | { kind: "error"; message: string };
+
+/** Wire shape returned by POST /api/dev/openai on success. */
+interface OpenAIApiSuccess {
+  ok: true;
+  data: { answer: string; model: string; usage?: unknown };
+}
+
+/** Wire shape returned by POST /api/dev/openai on failure. */
+interface OpenAIApiFailure {
+  ok: false;
+  error: { code: string; message: string; status?: number };
+}
+
+type OpenAIApiResponse = OpenAIApiSuccess | OpenAIApiFailure;
+
 const PREVIEW_LIMIT = 300;
 
 export default function DevParitokPage() {
@@ -78,6 +114,11 @@ export default function DevParitokPage() {
   const [question, setQuestion] = useState("How does authentication work?");
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>({
+    kind: "idle",
+  });
+  // Phase 5B — mirrors the OpenAI service. The card renders only
+  // after compression succeeds, so the initial state is `idle`.
+  const [answerStatus, setAnswerStatus] = useState<AnswerStatus>({
     kind: "idle",
   });
 
@@ -111,6 +152,51 @@ export default function DevParitokPage() {
   }, [question]);
 
   /**
+   * Phase 5B — forward the compressed context and the user's
+   * question into the existing OpenAI service via the dev API
+   * route. The route calls `generateAnswer()` server-side so the
+   * API key never leaves the Node runtime.
+   *
+   * The compressed context we send is the *full* payload Paritok
+   * returned (not the 300-char preview the card renders) so the
+   * model sees the same information the pipeline produced.
+   */
+  const runAnswer = useCallback(async (compressed: string, q: string) => {
+    setAnswerStatus({ kind: "loading" });
+    try {
+      const res = await fetch("/api/dev/openai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ context: compressed, question: q }),
+      });
+      const body = (await res.json()) as OpenAIApiResponse;
+      if (body.ok) {
+        // eslint-disable-next-line no-console
+        console.log("[dev/paritok] AI answer received:", body.data);
+        setAnswerStatus({
+          kind: "ok",
+          answer: body.data.answer,
+          model: body.data.model,
+        });
+      } else {
+        // eslint-disable-next-line no-console
+        console.error("[dev/paritok] OpenAI error:", body.error);
+        setAnswerStatus({
+          kind: "error",
+          message: body.error.message,
+        });
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[dev/paritok] network failure on /api/dev/openai:", err);
+      setAnswerStatus({
+        kind: "error",
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
+  }, []);
+
+  /**
    * Phase 4B2a/4B2b/4B2c/4B3a — invokes the existing `compressContext()`
    * pipeline directly (rank → Context Builder → Paritok).
    *
@@ -123,10 +209,17 @@ export default function DevParitokPage() {
    *   are stored in the status and rendered as a read-only dev-style
    *   "Compressed Context Preview" card. The full response is never
    *   shown.
+   * - 5B: on success, the full compressed payload is also forwarded
+   *   to `runAnswer()` so the existing OpenAI service can produce
+   *   a grounded answer. The previous AI Answer is cleared while
+   *   the new request is in flight, and re-rendered when it
+   *   completes (or as a failure card). On compression failure,
+   *   the AI Answer state is reset to `idle`.
    */
   const runPipeline = useCallback(async () => {
     setPipelineLoading(true);
     setPipelineStatus({ kind: "idle" });
+    setAnswerStatus({ kind: "idle" });
     try {
       const { ranked } = rankRelevantFiles(question, mockIndexedFiles, {
         limit: 5,
@@ -163,6 +256,12 @@ export default function DevParitokPage() {
           originalSize,
           compressedSize,
         });
+        // Phase 5B — fire the AI answer request now that we have a
+        // compressed payload to ground the model on. We do not
+        // await this; the card streams its own loading/ok/error
+        // transitions and `runPipeline` returns to the caller as
+        // soon as compression finishes.
+        void runAnswer(full, question);
       } else {
         setPipelineStatus({
           kind: "error",
@@ -177,7 +276,7 @@ export default function DevParitokPage() {
     } finally {
       setPipelineLoading(false);
     }
-  }, [question]);
+  }, [question, runAnswer]);
 
   return (
     <Section>
@@ -255,6 +354,7 @@ export default function DevParitokPage() {
                 preview={pipelineStatus.preview}
                 truncated={pipelineStatus.truncated}
               />
+              <AIAnswerCard status={answerStatus} />
             </>
           ) : null}
 
@@ -486,6 +586,85 @@ function CompressedContextPreview({
       <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-navy-800 bg-navy-950 p-3 font-mono text-xs leading-relaxed text-navy-100">
         {preview}
       </pre>
+    </div>
+  );
+}
+
+/**
+ * Phase 5B — dev-style read-only card that shows the AI answer
+ * produced by the existing OpenAI service. Placed directly below
+ * the Compressed Context Preview, matching the same developer
+ * aesthetic (rounded border, navy-950/60 background, monospace
+ * caption, emerald accent).
+ *
+ * Rendering rules (per Phase 5B spec):
+ *   - `idle`    — render nothing (compression is still running, or
+ *                 has not yet produced a successful run).
+ *   - `loading` — render a small "Generating answer…" placeholder
+ *                 so the user sees that the second leg is in flight.
+ *   - `ok`      — render the answer as **plain text only**. No
+ *                 Markdown rendering, no syntax highlighting, no
+ *                 smart formatting — just the model's text wrapped
+ *                 in a `whitespace-pre-wrap` block so newlines
+ *                 survive.
+ *   - `error`   — render "Unable to generate answer" with the
+ *                 OpenAI service's error message underneath, as
+ *                 the spec allows.
+ */
+function AIAnswerCard({ status }: { status: AnswerStatus }) {
+  if (status.kind === "idle") return null;
+
+  return (
+    <div className="mt-8 rounded-lg border border-navy-800 bg-navy-950/60 p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-navy-200">
+          AI Answer
+        </h2>
+        <span className="text-[10px] uppercase tracking-wide text-navy-500">
+          {status.kind === "ok" ? status.model : status.kind}
+        </span>
+      </div>
+
+      {status.kind === "loading" ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-2 text-xs text-navy-300"
+        >
+          <span
+            className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+            aria-hidden="true"
+          />
+          Generating answer…
+        </div>
+      ) : null}
+
+      {status.kind === "ok" ? (
+        // Plain text only. No Markdown, no HTML, no syntax
+        // highlighting. The text is wrapped in a div with
+        // `whitespace-pre-wrap` so newlines from the model are
+        // preserved exactly as returned.
+        <div
+          data-testid="ai-answer-text"
+          className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md border border-navy-800 bg-navy-950 p-3 text-sm leading-relaxed text-navy-50"
+        >
+          {status.answer}
+        </div>
+      ) : null}
+
+      {status.kind === "error" ? (
+        <div
+          role="status"
+          className="rounded-md border border-rose-700/40 bg-rose-900/20 p-3"
+        >
+          <p className="text-sm font-medium text-rose-200">
+            Unable to generate answer
+          </p>
+          {status.message ? (
+            <p className="mt-1 text-xs text-rose-100/80">{status.message}</p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
