@@ -1,5 +1,17 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Tailwind config — RepoLens
+ * -----------------------------------------------------------------------------
+ * Brand color tokens live in `lib/brand/colors.ts` and are mirrored here as
+ * the `brand.*` namespace. Those are the canonical brand colors extracted
+ * from the official logo. Use `bg-brand-navy`, `text-brand-teal`, etc.
+ *
+ * The legacy `navy.*` and `emerald.*` scales are retained for backward
+ * compatibility with components written before the brand system landed.
+ * Prefer `brand.*` for any new code.
+ */
+
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -8,7 +20,33 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Deep navy palette
+        // -------------------------------------------------------------------------
+        // Brand palette (source of truth: lib/brand/colors.ts)
+        // -------------------------------------------------------------------------
+        brand: {
+          // PRIMARY — Deep Navy / Charcoal
+          navy: {
+            DEFAULT: "#263442",
+            600: "#1f2a36",
+            800: "#1a2532",
+            900: "#101a24",
+          },
+          // SECONDARY — Teal / Emerald
+          teal: {
+            DEFAULT: "#14977c",
+            600: "#0f8068",
+            100: "#d3efe7",
+          },
+          // ACCENT — Warm Gold / Orange
+          gold: {
+            DEFAULT: "#e0a74b",
+            600: "#c8902f",
+            100: "#fbeed3",
+          },
+        },
+        // -------------------------------------------------------------------------
+        // Legacy palettes (kept for backward compatibility — prefer `brand.*`)
+        // -------------------------------------------------------------------------
         navy: {
           50: "#f0f4fa",
           100: "#dae4f2",
@@ -22,7 +60,6 @@ const config: Config = {
           900: "#0f1a2e",
           950: "#070d1a",
         },
-        // Emerald accent
         emerald: {
           50: "#ecfdf5",
           100: "#d1fae5",
@@ -42,7 +79,9 @@ const config: Config = {
       },
       backgroundImage: {
         "navy-gradient":
-          "radial-gradient(ellipse at top, rgba(16,185,129,0.08), transparent 60%), linear-gradient(180deg, #0f1a2e 0%, #070d1a 100%)",
+          "radial-gradient(ellipse at top, rgba(20,151,124,0.10), transparent 60%), linear-gradient(180deg, #101a24 0%, #070d1a 100%)",
+        "brand-gradient":
+          "linear-gradient(135deg, #14977c 0%, #e0a74b 100%)",
       },
     },
   },

@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="public/assets/logo.png" alt="RepoLens" width="420" />
+</div>
+
 # RepoLens
 
 > Understand any codebase with fewer tokens.

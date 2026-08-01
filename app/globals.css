@@ -2,12 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: #070d1a;
-    --foreground: #f0f4fa;
-  }
+/*
+ * RepoLens — Global styles
+ * -----------------------------------------------------------------------------
+ * CSS custom properties for the brand palette. These are the same values
+ * exposed as Tailwind tokens (`brand.*`) and as the `brand` object in
+ * `lib/brand/colors.ts`. Any of these three layers can be used; they all
+ * resolve to the same canonical colors extracted from the logo.
+ */
+:root {
+  /* Brand palette — single source of truth */
+  --brand-navy: #263442;
+  --brand-navy-600: #1f2a36;
+  --brand-navy-800: #1a2532;
+  --brand-navy-900: #101a24;
 
+  --brand-teal: #14977c;
+  --brand-teal-600: #0f8068;
+  --brand-teal-100: #d3efe7;
+
+  --brand-gold: #e0a74b;
+  --brand-gold-600: #c8902f;
+  --brand-gold-100: #fbeed3;
+
+  /* App surface colors (derived from the brand palette) */
+  --background: #070d1a;
+  --foreground: #f0f4fa;
+}
+
+@layer base {
   html {
     scroll-behavior: smooth;
   }
@@ -18,11 +41,15 @@
   }
 
   ::selection {
-    @apply bg-emerald-500/30 text-white;
+    @apply bg-brand-teal/30 text-white;
   }
 }
 
 @layer components {
+  .text-gradient-brand {
+    @apply bg-gradient-to-r from-brand-teal to-brand-gold bg-clip-text text-transparent;
+  }
+
   .text-gradient-emerald {
     @apply bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent;
   }
