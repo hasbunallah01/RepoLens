@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Understand any codebase with fewer tokens. Built for the Build with Paritok: The Token-Efficiency Hackathon.",
+  "engines": {
+    "node": ">=18.18.0 <20 || >=20.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",

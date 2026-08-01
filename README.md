@@ -145,6 +145,24 @@ of the token cost.
 
 ---
 
+## Deployment
+
+RepoLens is a Next.js 15 application designed to deploy to **Vercel**.
+
+- **Deployment guide:** see [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for
+  required environment variables, build/install commands, Node.js version,
+  and troubleshooting.
+- **Post-deploy verification:** see
+  [`docs/STARTUP-CHECKLIST.md`](./docs/STARTUP-CHECKLIST.md) for the
+  step-by-step checklist that confirms a fresh deployment is healthy
+  (build, env vars, `/api/health`, `/api/analyze`).
+- **Environment variables:** the placeholder file at
+  [`.env.example`](./.env.example) lists every required and optional
+  variable. Copy it to `.env.local` for local development; production
+  secrets live in the hosting platform's environment-variable store.
+
+---
+
 ## License
 
 Released under the [Apache License 2.0](./LICENSE).
