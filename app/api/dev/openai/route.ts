@@ -31,6 +31,7 @@
 
 import { devOnly, errorResponse, okResponse, withApiHandler } from "@/lib/api";
 import { generateAnswer } from "@/lib/openai";
+import { createRequestLogger } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,8 +55,12 @@ async function readBody(request: Request): Promise<RequestBody | null> {
 }
 
 const handler = withApiHandler(async (request: Request) => {
+  const log = createRequestLogger();
+  log.logStage("request_received");
+
   const body = await readBody(request);
   if (body === null) {
+    log.logStage("response_returned", { status: 400, code: "INVALID_REQUEST" });
     return errorResponse(
       "INVALID_REQUEST",
       "Request body must be valid JSON.",
@@ -67,6 +72,7 @@ const handler = withApiHandler(async (request: Request) => {
   const question = typeof body.question === "string" ? body.question : null;
 
   if (context === null) {
+    log.logStage("response_returned", { status: 400, code: "INVALID_REQUEST" });
     return errorResponse(
       "INVALID_REQUEST",
       "Missing or invalid 'context' (string required).",
@@ -74,6 +80,7 @@ const handler = withApiHandler(async (request: Request) => {
     );
   }
   if (question === null || question.trim().length === 0) {
+    log.logStage("response_returned", { status: 400, code: "INVALID_REQUEST" });
     return errorResponse(
       "INVALID_REQUEST",
       "Missing or empty 'question' (non-empty string required).",
@@ -81,11 +88,19 @@ const handler = withApiHandler(async (request: Request) => {
     );
   }
 
-  // Hand off to the existing OpenAI service. The service returns a
-  // discriminated result — it never throws. We surface that shape
-  // verbatim so the dev page can render either branch without
-  // re-checking the field names.
+  // We only log the lengths, never the contents — the compressed
+  // context and the question are exactly the payloads the task
+  // forbids from appearing in logs.
+  log.logStage("openai_request_started", {
+    contextChars: context.length,
+    questionChars: question.length,
+  });
+  const openaiStart = Date.now();
   const result = await generateAnswer({ context, question });
+  log.logStageWithDuration("openai_response_received", Date.now() - openaiStart, {
+    ok: result.ok,
+    model: result.ok ? result.model : undefined,
+  });
 
   if (!result.ok) {
     // Map our own error codes onto HTTP statuses so curl / the dev
@@ -93,6 +108,7 @@ const handler = withApiHandler(async (request: Request) => {
     // upstream failure. The OpenAI service does not dictate a
     // status; the route picks a reasonable one.
     const status = mapErrorStatus(result.error.code, result.error.status);
+    log.logStage("response_returned", { status, code: result.error.code });
     return errorResponse(result.error.code, result.error.message, status, {
       status: result.error.status,
     });
@@ -105,6 +121,7 @@ const handler = withApiHandler(async (request: Request) => {
   if (result.usage) {
     data.usage = result.usage;
   }
+  log.logStage("response_returned", { status: 200 });
   return okResponse(data);
 });
 

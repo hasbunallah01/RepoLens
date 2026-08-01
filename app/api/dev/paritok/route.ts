@@ -33,6 +33,7 @@ import { NextResponse } from "next/server";
 import { devOnly, errorResponse, withApiHandler } from "@/lib/api";
 import { compressContextPackage } from "@/lib/paritok";
 import { mockAuthContext } from "@/lib/context/mock";
+import { createRequestLogger } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -43,6 +44,9 @@ interface RequestBody {
 }
 
 const handler = withApiHandler(async (request: Request) => {
+  const log = createRequestLogger();
+  log.logStage("request_received");
+
   let question = "How does authentication work?";
   try {
     const body = (await request.json().catch(() => null)) as RequestBody | null;
@@ -53,12 +57,43 @@ const handler = withApiHandler(async (request: Request) => {
     // No body or invalid JSON — fall back to the default.
   }
 
-  const { result } = mockAuthContext(question, { limit: 5 });
+  // `mockAuthContext` is the demo repository baked into the
+  // build, so we label the log line with it instead of any
+  // user-supplied field.
+  log.logStage("repo_url_received", { owner: "demo", repo: "mock-auth" });
+  log.logStage("github_fetch_started");
+  // The mock path never actually hits GitHub — the demo
+  // repository is pre-baked in `lib/context/mock`. We still
+  // emit a `github_fetch_completed` line so the Vercel log
+  // timeline matches the production route's shape.
+  log.logStageWithDuration("github_fetch_completed", 0, {
+    owner: "demo",
+    repo: "mock-auth",
+    source: "mock",
+  });
+
+  // Ranking + context are bundled inside `mockAuthContext`. We
+  // log the boundary markers around it so the operator can see
+  // how long the local steps took.
+  log.logStage("ranking_started");
+  const rankingStart = Date.now();
+  const { result, ranked } = mockAuthContext(question, { limit: 5 });
+  log.logStageWithDuration("ranking_completed", Date.now() - rankingStart, {
+    rankedCount: ranked.length,
+  });
+
+  log.logStage("context_builder_started");
+  const contextStart = Date.now();
   const ctx = result.package;
+  log.logStageWithDuration("context_builder_completed", Date.now() - contextStart, {
+    fileCount: ctx?.files.length ?? 0,
+    errorCount: result.errors.length,
+  });
 
   // Quick sanity: a Context Package should always come back, even
   // if some files failed to resolve.
   if (!ctx) {
+    log.logStage("response_returned", { status: 500, code: "MISSING_FIELDS" });
     return errorResponse(
       "MISSING_FIELDS",
       "Context builder returned no package.",
@@ -66,11 +101,21 @@ const handler = withApiHandler(async (request: Request) => {
     );
   }
 
+  log.logStage("paritok_request_started", { fileCount: ctx.files.length });
+  const paritokStart = Date.now();
   const compressed = await compressContextPackage(ctx);
+  log.logStageWithDuration("paritok_response_received", Date.now() - paritokStart, {
+    ok: compressed.ok,
+    fileCount: ctx.files.length,
+  });
 
   if (!compressed.ok) {
     // Surface Paritok errors with their natural status so the dev
     // page can render a useful message.
+    log.logStage("response_returned", {
+      status: compressed.error.status ?? 502,
+      code: compressed.error.code,
+    });
     return errorResponse(
       compressed.error.code,
       compressed.error.message,
@@ -79,6 +124,7 @@ const handler = withApiHandler(async (request: Request) => {
     );
   }
 
+  log.logStage("response_returned", { status: 200 });
   return NextResponse.json(
     {
       ok: true as const,

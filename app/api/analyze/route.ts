@@ -24,6 +24,7 @@ import { parseGitHubUrl } from "@/lib/github/parse-url";
 import { fetchRecentCommits, fetchRepoMetadata, fetchRepoTree } from "@/lib/github/api";
 import { GitHubApiError } from "@/lib/github/client";
 import { buildIndex } from "@/lib/indexer";
+import { createRequestLogger } from "@/lib/log";
 import type { AnalysisResult } from "@/types/repository";
 
 // Avoid caching — each call is a fresh analysis.
@@ -45,22 +46,43 @@ export const GET = withApiHandler(async (request: Request) => {
     throw err;
   }
 
+  // One logger per request. Every stage we emit from here is
+  // bound to the same requestId so a Vercel Runtime Logs search
+  // for that id reconstructs the timeline.
+  const log = createRequestLogger();
+  log.logStage("request_received");
+
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url") ?? "";
 
   const parsed = parseGitHubUrl(url);
   if (!parsed.ok) {
+    log.logStage("response_returned", { status: 400, code: "INVALID_URL" });
     return errorResponse("INVALID_URL", parsed.reason, 400);
   }
 
   const { owner, repo } = parsed.value;
+  // Only the parsed owner/repo are logged. The raw `url` query
+  // string is intentionally omitted — it can include fragments,
+  // query params, and user-supplied tokens we never want in logs.
+  log.logStage("repo_url_received", { owner, repo });
 
   try {
+    log.logStage("github_fetch_started");
+    const fetchStart = Date.now();
     const metadata = await fetchRepoMetadata(owner, repo);
     const [tree, commits] = await Promise.all([
       fetchRepoTree(owner, repo, metadata.defaultBranch),
       fetchRecentCommits(owner, repo, 5).catch(() => [] as AnalysisResult["commits"]),
     ]);
+    log.logStageWithDuration("github_fetch_completed", Date.now() - fetchStart, {
+      owner,
+      repo,
+      defaultBranch: metadata.defaultBranch,
+      treeSize: tree.tree.length,
+      truncated: tree.truncated,
+      commitCount: commits.length,
+    });
 
     const index = buildIndex({
       sha: "",
@@ -77,12 +99,17 @@ export const GET = withApiHandler(async (request: Request) => {
       fetchedAt: new Date().toISOString(),
     };
 
+    log.logStage("response_returned", { status: 200 });
     return okResponse(result);
   } catch (err) {
     if (err instanceof GitHubApiError) {
       // `err.toAnalysisError()` returns a message that has already
       // been sanitised by the GitHub client — safe to forward.
       const upstream = err.toAnalysisError();
+      log.logStage("response_returned", {
+        status: upstream.status ?? 502,
+        code: upstream.code,
+      });
       return errorResponse(
         upstream.code,
         upstream.message,
@@ -93,6 +120,7 @@ export const GET = withApiHandler(async (request: Request) => {
     // Anything we did not classify is a true internal error —
     // re-throw so the top-level wrapper returns a sanitised 500
     // and we never leak the original message to the client.
+    log.logStage("response_returned", { status: 500, code: "INTERNAL" });
     throw err;
   }
 });
