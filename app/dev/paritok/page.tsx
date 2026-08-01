@@ -20,10 +20,11 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Container } from "@/components/Container";
 import { Section } from "@/components/Section";
 import { Button } from "@/components/Button";
+import { cn } from "@/lib/utils";
 import { compressContext } from "@/lib/pipeline";
 import { rankRelevantFiles } from "@/lib/ranking";
 import {
@@ -591,11 +592,11 @@ function CompressedContextPreview({
 }
 
 /**
- * Phase 5B — dev-style read-only card that shows the AI answer
- * produced by the existing OpenAI service. Placed directly below
- * the Compressed Context Preview, matching the same developer
- * aesthetic (rounded border, navy-950/60 background, monospace
- * caption, emerald accent).
+ * Phase 5B + 5C — dev-style read-only card that shows the AI
+ * answer produced by the existing OpenAI service. Placed directly
+ * below the Compressed Context Preview, matching the same
+ * developer aesthetic (rounded border, navy-950/60 background,
+ * monospace caption, emerald accent).
  *
  * Rendering rules (per Phase 5B spec):
  *   - `idle`    — render nothing (compression is still running, or
@@ -606,12 +607,76 @@ function CompressedContextPreview({
  *                 Markdown rendering, no syntax highlighting, no
  *                 smart formatting — just the model's text wrapped
  *                 in a `whitespace-pre-wrap` block so newlines
- *                 survive.
+ *                 survive. Phase 5C adds a "Copy Answer" button in
+ *                 the header that copies the raw text to the
+ *                 clipboard and briefly shows a "✓ Copied"
+ *                 confirmation for ~2 seconds.
  *   - `error`   — render "Unable to generate answer" with the
- *                 OpenAI service's error message underneath, as
- *                 the spec allows.
+ *                 OpenAI service's error message underneath.
  */
 function AIAnswerCard({ status }: { status: AnswerStatus }) {
+  // Local UI state for the "✓ Copied" confirmation. We keep it
+  // here (not lifted to the page) because the copy interaction
+  // is purely a presentation concern of this card.
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Always clear any pending "Copied" timer when the card unmounts
+  // or when a new render schedules a new one. This prevents
+  // "set state on unmounted component" warnings and stale flips
+  // after the user navigates away.
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleCopy = useCallback(async () => {
+    if (status.kind !== "ok") return;
+    const text = status.answer;
+    if (!text) return;
+
+    // Use the modern Clipboard API when available (the dev page
+    // runs over http://localhost which is a secure context, so
+    // this is the common case). Fall back to a hidden textarea +
+    // `execCommand("copy")` for older browsers / non-secure
+    // contexts — the fallback is best-effort and never throws.
+    let succeeded = false;
+    try {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
+        await navigator.clipboard.writeText(text);
+        succeeded = true;
+      } else {
+        succeeded = legacyCopy(text);
+      }
+    } catch {
+      // The Clipboard API can reject (e.g. document not focused,
+      // permissions blocked). Try the legacy path as a last
+      // resort before giving up silently.
+      succeeded = legacyCopy(text);
+    }
+
+    if (!succeeded) return;
+
+    // Reset any in-flight timer so rapid clicks don't desync the
+    // confirmation window.
+    if (copyTimerRef.current !== null) {
+      clearTimeout(copyTimerRef.current);
+    }
+    setCopied(true);
+    copyTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copyTimerRef.current = null;
+    }, 2000);
+  }, [status]);
+
   if (status.kind === "idle") return null;
 
   return (
@@ -620,9 +685,14 @@ function AIAnswerCard({ status }: { status: AnswerStatus }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-navy-200">
           AI Answer
         </h2>
-        <span className="text-[10px] uppercase tracking-wide text-navy-500">
-          {status.kind === "ok" ? status.model : status.kind}
-        </span>
+        <div className="flex items-center gap-3">
+          {status.kind === "ok" ? (
+            <CopyButton copied={copied} onClick={() => void handleCopy()} />
+          ) : null}
+          <span className="text-[10px] uppercase tracking-wide text-navy-500">
+            {status.kind === "ok" ? status.model : status.kind}
+          </span>
+        </div>
       </div>
 
       {status.kind === "loading" ? (
@@ -641,12 +711,18 @@ function AIAnswerCard({ status }: { status: AnswerStatus }) {
 
       {status.kind === "ok" ? (
         // Plain text only. No Markdown, no HTML, no syntax
-        // highlighting. The text is wrapped in a div with
-        // `whitespace-pre-wrap` so newlines from the model are
-        // preserved exactly as returned.
+        // highlighting. Phase 5C improves readability:
+        //   - `whitespace-pre-wrap` preserves the model's line
+        //     breaks and intra-paragraph spacing exactly.
+        //   - `break-words` (with `overflow-wrap-anywhere` as a
+        //     safety net) wraps long lines so the card never
+        //     produces a horizontal scrollbar.
+        //   - Comfortable `leading-7`, slightly larger `text-[15px]`,
+        //     and `p-5` padding give the prose room to breathe
+        //     without making the card feel airy.
         <div
           data-testid="ai-answer-text"
-          className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md border border-navy-800 bg-navy-950 p-3 text-sm leading-relaxed text-navy-50"
+          className="max-h-[28rem] overflow-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-md border border-navy-800 bg-navy-950 p-5 text-[15px] leading-7 tracking-[0.005em] text-navy-50"
         >
           {status.answer}
         </div>
@@ -666,5 +742,115 @@ function AIAnswerCard({ status }: { status: AnswerStatus }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Phase 5C — compact "Copy Answer" button rendered inside the
+ * AIAnswerCard header. When clicked, it copies the answer to the
+ * clipboard (handled by the parent) and flips its label to
+ * "✓ Copied" for ~2 seconds before reverting. The button is
+ * purely presentational; it never reads the answer itself.
+ */
+function CopyButton({
+  copied,
+  onClick,
+}: {
+  copied: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-live="polite"
+      aria-label={copied ? "Answer copied to clipboard" : "Copy answer to clipboard"}
+      data-testid="ai-answer-copy"
+      className={cn(
+        "inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium uppercase tracking-wider transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950",
+        copied
+          ? "border-emerald-700/50 bg-emerald-900/30 text-emerald-300"
+          : "border-navy-700 bg-navy-900/60 text-navy-200 hover:border-emerald-500/50 hover:bg-navy-900 hover:text-white",
+      )}
+    >
+      {copied ? (
+        <>
+          <CheckIcon className="h-3.5 w-3.5" />
+          <span>Copied</span>
+        </>
+      ) : (
+        <>
+          <CopyIcon className="h-3.5 w-3.5" />
+          <span>Copy Answer</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Phase 5C — best-effort legacy clipboard copy using a hidden
+ * textarea and the deprecated `document.execCommand("copy")`.
+ * Used only when the modern Clipboard API is unavailable or
+ * rejects. Returns `true` on success, `false` otherwise.
+ */
+function legacyCopy(text: string): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.opacity = "0";
+    ta.style.pointerEvents = "none";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+function CopyIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <rect
+        x="9"
+        y="9"
+        width="11"
+        height="11"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 15V5a2 2 0 0 1 2-2h10"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path
+        d="m5 12 5 5L20 7"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
