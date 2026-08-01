@@ -29,6 +29,14 @@
  * can inspect what was built and what the model produced, without
  * changing the shape existing consumers rely on.
  *
+ * Debug-only fields (`contextPackage`, `paritok`, and the bounded
+ * `compressedPreview`) are intended for local development and
+ * inspection. They are excluded from the response whenever
+ * `process.env.NODE_ENV === "production"` so we never ship
+ * internal pipeline artifacts to public clients. The summary
+ * fields (`package`, `compression`, `answer`) are production-safe
+ * and always present.
+ *
  * Status codes:
  *   200 — success
  *   400 — invalid `url` query parameter
@@ -57,6 +65,15 @@ import type { AnalysisResult } from "@/types/repository";
 // Avoid caching — each call is a fresh analysis.
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+/**
+ * `true` when the route is running in a production build. Used to
+ * gate debug-only response fields (full Context Package, raw
+ * Paritok payload, compressed-text preview) so internal pipeline
+ * artifacts are never shipped to public clients. Matches the
+ * existing convention in `lib/api/index.ts#devOnly`.
+ */
+const isProduction = process.env.NODE_ENV === "production";
 
 export const GET = withApiHandler(async (request: Request) => {
   // Fail fast on missing required environment variables so the
@@ -238,26 +255,20 @@ export const GET = withApiHandler(async (request: Request) => {
 
     // The existing `data` shape is preserved verbatim. The Context
     // Package and the Paritok compression result are attached as
-    // extra top-level fields on the success body so existing
-    // consumers (and the dashboard) keep working unchanged. A
-    // future milestone can promote these to the canonical
-    // response shape once the rest of the AI pipeline is wired
-    // in.
+    // extra top-level fields on the success body in non-production
+    // environments so existing consumers (and the dashboard) keep
+    // working unchanged. A future milestone can promote these to
+    // the canonical response shape once the rest of the AI
+    // pipeline is wired in.
     //
     // `compression` carries the minimum the call site needs to
     // verify the round-trip: the Paritok `ok` flag, the returned
-    // `compressed` text (capped to a safe preview length so we
-    // never blast a multi-MB string into the success envelope),
-    // the echoed `clientId` / `schemaVersion`, and `gpu_available`
-    // — all of which the existing Paritok client already
-    // guarantees. The full Paritok result is also available as
-    // `paritok` for callers that need the raw payload.
+    // `compressed` text, the echoed `clientId` / `schemaVersion`,
+    // and `gpu_available` — all of which the existing Paritok
+    // client already guarantees. The full Paritok result is also
+    // available as `paritok` (debug-only) for callers that need
+    // the raw payload.
     const compressedText = compressed.data.compressed;
-    const COMPRESSION_PREVIEW_LIMIT = 2000;
-    const compressedPreview =
-      compressedText.length <= COMPRESSION_PREVIEW_LIMIT
-        ? compressedText
-        : `${compressedText.slice(0, COMPRESSION_PREVIEW_LIMIT)}…`;
 
     // ----------------------------------------------------------------
     //  OpenAI answer generation (Backend 7B.2)
@@ -298,35 +309,48 @@ export const GET = withApiHandler(async (request: Request) => {
     }
 
     log.logStage("response_returned", { status: 200 });
-    return NextResponse.json(
-      {
-        ok: true as const,
-        data: result,
-        package: {
-          question,
-          repository: pkg.repository,
-          fileCount: pkg.files.length,
-          filePaths: pkg.files.map((f) => f.path),
-          builtAt: pkg.repository.builtAt,
-        },
-        contextPackage: pkg,
-        compression: {
-          ok: true as const,
-          gpuAvailable: compressed.data.gpu_available,
-          clientId: compressed.data.clientId,
-          schemaVersion: compressed.data.schemaVersion,
-          compressedLength: compressedText.length,
-          compressedPreview,
-        },
-        paritok: compressed.data,
-        answer: {
-          text: ai.answer,
-          model: ai.model,
-          usage: ai.usage,
-        },
+    // Production-safe fields are always present. The full Context
+    // Package, the raw Paritok response, and the bounded compressed
+    // preview are useful for local inspection but are internal
+    // pipeline artifacts; we strip them from production responses so
+    // we never leak them to public clients.
+    const body: Record<string, unknown> = {
+      ok: true,
+      data: result,
+      package: {
+        question,
+        repository: pkg.repository,
+        fileCount: pkg.files.length,
+        filePaths: pkg.files.map((f) => f.path),
+        builtAt: pkg.repository.builtAt,
       },
-      { status: 200 },
-    );
+      compression: {
+        ok: true as const,
+        gpuAvailable: compressed.data.gpu_available,
+        clientId: compressed.data.clientId,
+        schemaVersion: compressed.data.schemaVersion,
+        compressedLength: compressedText.length,
+      },
+      answer: {
+        text: ai.answer,
+        model: ai.model,
+        usage: ai.usage,
+      },
+    };
+
+    if (!isProduction) {
+      body.contextPackage = pkg;
+      body.paritok = compressed.data;
+      // `compressedPreview` is bounded (first 2000 chars) but still
+      // counts as a debug artifact, so it shares the same gate.
+      const COMPRESSION_PREVIEW_LIMIT = 2000;
+      (body.compression as Record<string, unknown>).compressedPreview =
+        compressedText.length <= COMPRESSION_PREVIEW_LIMIT
+          ? compressedText
+          : `${compressedText.slice(0, COMPRESSION_PREVIEW_LIMIT)}…`;
+    }
+
+    return NextResponse.json(body, { status: 200 });
   } catch (err) {
     if (err instanceof GitHubApiError) {
       // `err.toAnalysisError()` returns a message that has already
