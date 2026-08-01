@@ -16,22 +16,26 @@
  *     ↓ Existing Ranking Engine
  *     ↓ Existing `fetchRankedFileContents()`
  *     ↓ Existing `buildProductionContextFromMetadata()`
+ *     ↓ Existing `compressContextPackage()` (Paritok)
+ *
+ * OpenAI is intentionally NOT called yet — Paritok is the only
+ * optimisation engine wired into this milestone (Backend 7B.1).
  *
  * The base response envelope is unchanged (see `lib/api` for the
  * full contract):
  *   { ok: true,  data: AnalysisResult }
  *   { ok: false, error: { code: AnalysisErrorCode, message, status? } }
  *
- * When `question` is supplied, the success body gains an extra
- * `package` field (the built Context Package + a small summary)
- * so the call site can inspect what would be handed to Paritok /
- * OpenAI in a later milestone. The base `data` shape is preserved.
+ * When `question` is supplied, the success body gains extra
+ * `package` and `compression` fields so the call site can inspect
+ * what was built and what Paritok returned, without changing the
+ * shape existing consumers rely on.
  *
  * Status codes:
  *   200 — success
  *   400 — invalid `url` query parameter
  *   500 — unexpected internal error (sanitised, no stack trace)
- *   502 — upstream GitHub error (status echoed from GitHub)
+ *   502 — upstream GitHub or Paritok error (status echoed from upstream)
  *   503 — missing required environment variable
  */
 
@@ -47,6 +51,7 @@ import {
   rankRelevantFiles,
 } from "@/lib/ranking";
 import { buildProductionContextFromMetadata } from "@/lib/context";
+import { compressContextPackage } from "@/lib/paritok";
 import { createRequestLogger } from "@/lib/log";
 import type { AnalysisResult } from "@/types/repository";
 
@@ -187,13 +192,74 @@ export const GET = withApiHandler(async (request: Request) => {
       errorCount: contextResult.errors.length,
     });
 
-    // The existing `data` shape is preserved verbatim; the Context
-    // Package is attached as an extra top-level `package` field on
-    // the success body so existing consumers (and the dashboard)
-    // keep working unchanged. A future milestone can promote this
-    // to the canonical response shape once the rest of the AI
-    // pipeline (Paritok + OpenAI) is wired in.
+    // Quick sanity: a Context Package should always come back, even
+    // if some files failed to resolve. Without it Paritok has
+    // nothing to compress, so we surface a 500 instead of silently
+    // sending an empty payload upstream.
     const pkg = contextResult.package;
+    if (!pkg) {
+      log.logStage("response_returned", { status: 500, code: "MISSING_FIELDS" });
+      return errorResponse(
+        "MISSING_FIELDS",
+        "Context builder returned no package.",
+        500,
+      );
+    }
+
+    // ----------------------------------------------------------------
+    //  Paritok compression (Backend 7B.1)
+    //  Hands the Context Package to the existing Paritok client.
+    //  `compressContextPackage()` is the documented entry point of
+    //  `@/lib/paritok`; we pass the package through unchanged and
+    //  do not duplicate any compression / request / parsing logic
+    //  locally. OpenAI is not called yet.
+    // ----------------------------------------------------------------
+    log.logStage("paritok_request_started", { fileCount: pkg.files.length });
+    const paritokStart = Date.now();
+    const compressed = await compressContextPackage(pkg);
+    log.logStageWithDuration("paritok_response_received", Date.now() - paritokStart, {
+      ok: compressed.ok,
+      fileCount: pkg.files.length,
+    });
+
+    if (!compressed.ok) {
+      // Mirror the dev/paritok route: surface the upstream error
+      // with its natural status so the client can branch on it.
+      log.logStage("response_returned", {
+        status: compressed.error.status ?? 502,
+        code: compressed.error.code,
+      });
+      return errorResponse(
+        compressed.error.code,
+        compressed.error.message,
+        compressed.error.status ?? 502,
+        { status: compressed.error.status },
+      );
+    }
+
+    // The existing `data` shape is preserved verbatim. The Context
+    // Package and the Paritok compression result are attached as
+    // extra top-level fields on the success body so existing
+    // consumers (and the dashboard) keep working unchanged. A
+    // future milestone can promote these to the canonical
+    // response shape once the rest of the AI pipeline (OpenAI) is
+    // wired in.
+    //
+    // `compression` carries the minimum the call site needs to
+    // verify the round-trip: the Paritok `ok` flag, the returned
+    // `compressed` text (capped to a safe preview length so we
+    // never blast a multi-MB string into the success envelope),
+    // the echoed `clientId` / `schemaVersion`, and `gpu_available`
+    // — all of which the existing Paritok client already
+    // guarantees. The full Paritok result is also available as
+    // `paritok` for callers that need the raw payload.
+    const compressedText = compressed.data.compressed;
+    const COMPRESSION_PREVIEW_LIMIT = 2000;
+    const compressedPreview =
+      compressedText.length <= COMPRESSION_PREVIEW_LIMIT
+        ? compressedText
+        : `${compressedText.slice(0, COMPRESSION_PREVIEW_LIMIT)}…`;
+
     log.logStage("response_returned", { status: 200 });
     return NextResponse.json(
       {
@@ -201,12 +267,21 @@ export const GET = withApiHandler(async (request: Request) => {
         data: result,
         package: {
           question,
-          repository: pkg?.repository,
-          fileCount: pkg?.files.length ?? 0,
-          filePaths: pkg?.files.map((f) => f.path) ?? [],
-          builtAt: pkg?.repository.builtAt,
+          repository: pkg.repository,
+          fileCount: pkg.files.length,
+          filePaths: pkg.files.map((f) => f.path),
+          builtAt: pkg.repository.builtAt,
         },
         contextPackage: pkg,
+        compression: {
+          ok: true as const,
+          gpuAvailable: compressed.data.gpu_available,
+          clientId: compressed.data.clientId,
+          schemaVersion: compressed.data.schemaVersion,
+          compressedLength: compressedText.length,
+          compressedPreview,
+        },
+        paritok: compressed.data,
       },
       { status: 200 },
     );
