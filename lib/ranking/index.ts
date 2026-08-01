@@ -33,3 +33,7 @@ export {
   rankingCacheClear,
   rankingCacheKey,
 } from "./cache";
+export {
+  fetchRankedFileContents,
+  type FetchRankedContentsOptions,
+} from "./fetch-contents";
