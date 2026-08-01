@@ -10,6 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { ConfigError, validateConfig } from "@/lib/config";
 import { parseGitHubUrl } from "@/lib/github/parse-url";
 import { fetchRecentCommits, fetchRepoMetadata, fetchRepoTree } from "@/lib/github/api";
 import { GitHubApiError } from "@/lib/github/client";
@@ -21,6 +22,27 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  // Fail fast on missing required environment variables so the
+  // developer sees a clear, actionable error instead of a generic
+  // 5xx from the upstream service.
+  try {
+    validateConfig();
+  } catch (err) {
+    if (err instanceof ConfigError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "UNKNOWN",
+            message: err.message,
+          },
+        },
+        { status: 500 },
+      );
+    }
+    throw err;
+  }
+
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url") ?? "";
 

@@ -23,6 +23,7 @@
  * mistake) so those surface in dev rather than being swallowed.
  */
 
+import { getParitokApiKey, PARITOK_API_KEY_ENV } from "@/lib/config";
 import type { ContextPackage } from "@/lib/context";
 import type {
   ParitokCompressionKind,
@@ -48,8 +49,14 @@ export const PARITOK_API_URL = "https://www.paritok.com/api/compress";
 /** Default per-request timeout, in milliseconds. */
 export const DEFAULT_PARITOK_TIMEOUT_MS = 20_000;
 
-/** Environment variable holding the Paritok bearer token. */
-export const PARITOK_API_KEY_ENV = "PARITOK_API_KEY" as const;
+/**
+ * Environment variable holding the Paritok bearer token.
+ *
+ * Re-exported from `@/lib/config` so existing imports
+ * (`import { PARITOK_API_KEY_ENV } from "@/lib/paritok"`) keep
+ * working, and so the constant has a single source of truth.
+ */
+export { PARITOK_API_KEY_ENV };
 
 /* -------------------------------------------------------------------------- */
 /*  Result helpers                                                            */
@@ -83,7 +90,10 @@ function fail(
  *      value is used verbatim after trimming. This lets tests
  *      deterministically force the "missing key" branch by passing
  *      an empty string.
- *   2. Otherwise, `process.env.PARITOK_API_KEY` is used (trimmed).
+ *   2. Otherwise, the centralised config module reads
+ *      `process.env.PARITOK_API_KEY` (trimmed) lazily so that tests
+ *      which mutate `process.env` between calls still see the
+ *      updated value.
  *   3. Otherwise, an empty string is returned.
  *
  * Callers should treat an empty result as a hard failure — we
@@ -93,8 +103,7 @@ export function resolveParitokApiKey(override?: string): string {
   if (override !== undefined) {
     return override.trim();
   }
-  const fromEnv = process.env[PARITOK_API_KEY_ENV];
-  return fromEnv ? fromEnv.trim() : "";
+  return getParitokApiKey() ?? "";
 }
 
 /* -------------------------------------------------------------------------- */

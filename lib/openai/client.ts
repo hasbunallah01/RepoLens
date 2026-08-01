@@ -11,6 +11,7 @@
  * Phase 5B will wire this into the UI.
  */
 
+import { getOpenAIApiKey } from "@/lib/config";
 import type {
   GenerateAnswerOptions,
   GenerateAnswerResult,
@@ -161,12 +162,9 @@ function failure(
 }
 
 function readApiKey(): string | null {
-  // `process.env` is the canonical source for Next.js server-side code.
-  // We accept either the bare key or the trimmed form to be forgiving.
-  const raw = process.env.OPENAI_API_KEY;
-  if (typeof raw !== "string") return null;
-  const trimmed = raw.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  // The centralised config module owns all `process.env` access so
+  // every consumer shares the same trimming / blank-handling rules.
+  return getOpenAIApiKey();
 }
 
 function buildUserPrompt(context: string, question: string): string {

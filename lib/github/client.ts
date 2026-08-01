@@ -7,6 +7,7 @@
  * into our `AnalysisError` shape.
  */
 
+import { getGitHubToken } from "@/lib/config";
 import type { AnalysisError, AnalysisErrorCode } from "@/types/repository";
 
 const GITHUB_API = "https://api.github.com";
@@ -33,7 +34,7 @@ export class GitHubApiError extends Error {
 }
 
 function authHeaders(): Record<string, string> {
-  const token = process.env.GITHUB_TOKEN?.trim();
+  const token = getGitHubToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
