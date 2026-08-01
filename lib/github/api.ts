@@ -5,9 +5,10 @@
  *   - GET /repos/{owner}/{repo}                  → metadata
  *   - GET /repos/{owner}/{repo}/git/trees/{sha}?recursive=1  → file tree
  *   - GET /repos/{owner}/{repo}/commits?per_page=5          → recent commits
+ *   - GET /repos/{owner}/{repo}/contents/{path}?ref={ref}    → file content
  */
 
-import { request } from "./client";
+import { request, GitHubApiError } from "./client";
 import type { RepoCommit, RepoMetadata } from "@/types/repository";
 
 interface RawRepo {
@@ -55,6 +56,18 @@ interface RawCommit {
   };
 }
 
+interface RawContent {
+  name: string;
+  path: string;
+  sha: string;
+  size: number;
+  type: "file" | "dir" | "symlink" | "submodule";
+  encoding: "base64" | string;
+  content: string;
+  html_url: string;
+  download_url: string | null;
+}
+
 export async function fetchRepoMetadata(owner: string, repo: string): Promise<RepoMetadata> {
   const raw = await request<RawRepo>(`/repos/${owner}/${repo}`);
   return {
@@ -99,6 +112,56 @@ export async function fetchRecentCommits(
     date: c.commit.author?.date ?? new Date().toISOString(),
     url: c.html_url,
   }));
+}
+
+/**
+ * Fetches the decoded text content of a single file from a GitHub repository.
+ *
+ * Uses the contents endpoint, which returns the file as a base64-encoded
+ * `content` field. Directory entries (`type: "dir"`) and non-text files
+ * (e.g. images) cannot be decoded and will throw a `GitHubApiError`.
+ *
+ * Reuses the shared `request()` helper for auth, headers, and error mapping,
+ * so callers see the same `GitHubApiError` shape (REPO_NOT_FOUND,
+ * REPO_PRIVATE, RATE_LIMITED, NETWORK, UNKNOWN) as the other GitHub
+ * wrappers.
+ */
+export async function fetchRepoFile(
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string,
+): Promise<string> {
+  const normalizedPath = path.replace(/^\/+/, "");
+  const query = ref ? `?ref=${encodeURIComponent(ref)}` : "";
+  const raw = await request<RawContent>(
+    `/repos/${owner}/${repo}/contents/${encodeURI(normalizedPath)}${query}`,
+  );
+
+  if (raw.type !== "file") {
+    throw new GitHubApiError(
+      "UNKNOWN",
+      `Path "${path}" is not a file (got "${raw.type}").`,
+    );
+  }
+
+  if (raw.encoding !== "base64") {
+    throw new GitHubApiError(
+      "UNKNOWN",
+      `Unsupported content encoding "${raw.encoding}" for "${path}".`,
+    );
+  }
+
+  // GitHub wraps base64 content in newlines and may include Unicode markers.
+  const cleaned = raw.content.replace(/\s+/g, "");
+  try {
+    return Buffer.from(cleaned, "base64").toString("utf8");
+  } catch {
+    throw new GitHubApiError(
+      "UNKNOWN",
+      `Failed to decode file content for "${path}".`,
+    );
+  }
 }
 
 export type { RawTree, RawTreeEntry };
