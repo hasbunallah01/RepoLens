@@ -55,3 +55,9 @@ export type {
   ContextMetrics,
   CalculateContextMetricsOptions,
 } from "./metrics";
+export {
+  buildProductionContext,
+  buildProductionContextFromMetadata,
+  type BuildProductionContextOptions,
+  type ProductionContextRepoInfo,
+} from "./build-production-context";
