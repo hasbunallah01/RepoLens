@@ -62,7 +62,13 @@ type DevApiResponse = DevApiSuccess | DevApiFailure;
 
 type PipelineStatus =
   | { kind: "idle" }
-  | { kind: "ok"; preview: string; truncated: boolean }
+  | {
+      kind: "ok";
+      preview: string;
+      truncated: boolean;
+      originalSize: number;
+      compressedSize: number;
+    }
   | { kind: "error"; message: string };
 
 const PREVIEW_LIMIT = 300;
@@ -138,12 +144,24 @@ export default function DevParitokPage() {
       if (result.compressed.ok) {
         const full = result.compressed.data.compressed;
         const truncated = full.length > PREVIEW_LIMIT;
+        // Phase 4B3b — original context size is the joined `content`
+        // field of every file in the Context Package returned by the
+        // builder. The compressed size is the length of the payload
+        // Paritok gave us back. Both numbers come straight from the
+        // existing pipeline result — no recomputation.
+        const originalSize = result.package.files.reduce(
+          (acc, f) => acc + f.content.length,
+          0,
+        );
+        const compressedSize = full.length;
         setPipelineStatus({
           kind: "ok",
           preview: truncated
             ? `${full.slice(0, PREVIEW_LIMIT)}...`
             : full,
           truncated,
+          originalSize,
+          compressedSize,
         });
       } else {
         setPipelineStatus({
@@ -228,10 +246,16 @@ export default function DevParitokPage() {
           </div>
 
           {pipelineStatus.kind === "ok" ? (
-            <CompressedContextPreview
-              preview={pipelineStatus.preview}
-              truncated={pipelineStatus.truncated}
-            />
+            <>
+              <ContextSizeComparison
+                originalSize={pipelineStatus.originalSize}
+                compressedSize={pipelineStatus.compressedSize}
+              />
+              <CompressedContextPreview
+                preview={pipelineStatus.preview}
+                truncated={pipelineStatus.truncated}
+              />
+            </>
           ) : null}
 
           <div className="mt-8">
@@ -387,6 +411,51 @@ function CompressionStatus({ status }: { status: PipelineStatus }) {
         <span className="text-xs text-navy-400">{status.message}</span>
       ) : null}
     </span>
+  );
+}
+
+/**
+ * Phase 4B3b — simple information card showing the original context
+ * size and the compressed context size, both in characters. Only
+ * rendered after a successful compression. No tokens, no
+ * percentages, no OpenAI.
+ */
+function ContextSizeComparison({
+  originalSize,
+  compressedSize,
+}: {
+  originalSize: number;
+  compressedSize: number;
+}) {
+  return (
+    <div className="mt-8 rounded-lg border border-navy-800 bg-navy-950/60 p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-navy-200">
+          Context Size Comparison
+        </h2>
+        <span className="text-[10px] uppercase tracking-wide text-navy-500">
+          characters
+        </span>
+      </div>
+      <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-navy-400">
+            Original Context Size
+          </dt>
+          <dd className="mt-1 font-mono text-navy-50">
+            {originalSize.toLocaleString()} characters
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-navy-400">
+            Compressed Context Size
+          </dt>
+          <dd className="mt-1 font-mono text-navy-50">
+            {compressedSize.toLocaleString()} characters
+          </dd>
+        </div>
+      </dl>
+    </div>
   );
 }
 
