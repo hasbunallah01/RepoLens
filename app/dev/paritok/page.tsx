@@ -63,6 +63,7 @@ type DevApiResponse = DevApiSuccess | DevApiFailure;
 export default function DevParitokPage() {
   const [state, setState] = useState<DevState>({ kind: "idle" });
   const [question, setQuestion] = useState("How does authentication work?");
+  const [pipelineLoading, setPipelineLoading] = useState(false);
 
   const run = useCallback(async () => {
     setState({ kind: "loading" });
@@ -94,20 +95,26 @@ export default function DevParitokPage() {
   }, [question]);
 
   /**
-   * Phase 4B2a — invokes the existing `compressContext()` pipeline
-   * directly (rank → Context Builder → Paritok). No loading state,
-   * no success/failure UI, no compressed-data display — clicking
-   * the button just calls the pipeline.
+   * Phase 4B2a/4B2b — invokes the existing `compressContext()` pipeline
+   * directly (rank → Context Builder → Paritok). Phase 4B2b adds a
+   * loading state: while the pipeline is running, the button is
+   * disabled, the text changes to "Compressing…", and a spinner is
+   * shown. No success/failure UI, no compressed-data display.
    */
   const runPipeline = useCallback(async () => {
-    const { ranked } = rankRelevantFiles(question, mockIndexedFiles, {
-      limit: 5,
-    });
-    await compressContext(question, ranked, mockRepository, {
-      contentSource: "inline",
-      contents: mockFileContents,
-      limit: 5,
-    });
+    setPipelineLoading(true);
+    try {
+      const { ranked } = rankRelevantFiles(question, mockIndexedFiles, {
+        limit: 5,
+      });
+      await compressContext(question, ranked, mockRepository, {
+        contentSource: "inline",
+        contents: mockFileContents,
+        limit: 5,
+      });
+    } finally {
+      setPipelineLoading(false);
+    }
   }, [question]);
 
   return (
@@ -152,8 +159,19 @@ export default function DevParitokPage() {
                 variant="primary"
                 size="md"
                 onClick={() => void runPipeline()}
+                disabled={pipelineLoading}
               >
-                Compress with Paritok
+                {pipelineLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+                      aria-hidden="true"
+                    />
+                    Compressing...
+                  </span>
+                ) : (
+                  "Compress with Paritok"
+                )}
               </Button>
               <span className="text-xs text-navy-400">
                 Endpoint:&nbsp;
