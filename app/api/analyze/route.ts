@@ -1,27 +1,36 @@
 /**
  * GET /api/analyze?url=<github-url>
  *
- * Phase 2 endpoint. Server-side because:
- *   - we don't want to leak any GITHUB_TOKEN to the browser
- *   - we want uniform rate-limit / error handling
- *   - we want a single place to assemble metadata + tree + commits
+ * Production route. Fetches a public GitHub repository's metadata,
+ * tree, and recent commits, then runs them through the local
+ * indexer. Server-side because we never want to leak `GITHUB_TOKEN`
+ * to the browser and we want a single place to handle errors.
  *
- * Response: { ok: true, data: AnalysisResult } | { ok: false, error: AnalysisError }
+ * Response envelope (see `lib/api` for the full contract):
+ *   { ok: true,  data: AnalysisResult }
+ *   { ok: false, error: { code: AnalysisErrorCode, message, status? } }
+ *
+ * Status codes:
+ *   200 — success
+ *   400 — invalid `url` query parameter
+ *   500 — unexpected internal error (sanitised, no stack trace)
+ *   502 — upstream GitHub error (status echoed from GitHub)
+ *   503 — missing required environment variable
  */
 
-import { NextResponse } from "next/server";
 import { ConfigError, validateConfig } from "@/lib/config";
+import { errorResponse, okResponse, withApiHandler } from "@/lib/api";
 import { parseGitHubUrl } from "@/lib/github/parse-url";
 import { fetchRecentCommits, fetchRepoMetadata, fetchRepoTree } from "@/lib/github/api";
 import { GitHubApiError } from "@/lib/github/client";
 import { buildIndex } from "@/lib/indexer";
-import type { AnalysisError, AnalysisResult } from "@/types/repository";
+import type { AnalysisResult } from "@/types/repository";
 
 // Avoid caching — each call is a fresh analysis.
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+export const GET = withApiHandler(async (request: Request) => {
   // Fail fast on missing required environment variables so the
   // developer sees a clear, actionable error instead of a generic
   // 5xx from the upstream service.
@@ -29,17 +38,10 @@ export async function GET(request: Request) {
     validateConfig();
   } catch (err) {
     if (err instanceof ConfigError) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: {
-            code: "UNKNOWN",
-            message: err.message,
-          },
-        },
-        { status: 500 },
-      );
+      return errorResponse("MISSING_CONFIG", err.message, 503);
     }
+    // Anything else from `validateConfig` is a programmer error —
+    // let the top-level wrapper convert it to a sanitised 500.
     throw err;
   }
 
@@ -48,10 +50,7 @@ export async function GET(request: Request) {
 
   const parsed = parseGitHubUrl(url);
   if (!parsed.ok) {
-    return NextResponse.json(
-      { ok: false, error: { code: "INVALID_URL", message: parsed.reason } satisfies AnalysisError },
-      { status: 400 },
-    );
+    return errorResponse("INVALID_URL", parsed.reason, 400);
   }
 
   const { owner, repo } = parsed.value;
@@ -78,23 +77,22 @@ export async function GET(request: Request) {
       fetchedAt: new Date().toISOString(),
     };
 
-    return NextResponse.json({ ok: true, data: result });
+    return okResponse(result);
   } catch (err) {
     if (err instanceof GitHubApiError) {
-      return NextResponse.json(
-        { ok: false, error: err.toAnalysisError() },
-        { status: err.status ?? 502 },
+      // `err.toAnalysisError()` returns a message that has already
+      // been sanitised by the GitHub client — safe to forward.
+      const upstream = err.toAnalysisError();
+      return errorResponse(
+        upstream.code,
+        upstream.message,
+        upstream.status ?? 502,
+        { status: upstream.status },
       );
     }
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          code: "UNKNOWN",
-          message: err instanceof Error ? err.message : "Unexpected error.",
-        } satisfies AnalysisError,
-      },
-      { status: 500 },
-    );
+    // Anything we did not classify is a true internal error —
+    // re-throw so the top-level wrapper returns a sanitised 500
+    // and we never leak the original message to the client.
+    throw err;
   }
-}
+});

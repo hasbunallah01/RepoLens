@@ -1,8 +1,12 @@
 /**
- * POST /api/dev/openai
+ * POST /api/dev/openai  [DEV-ONLY]
  *
- * Dev-only route used to verify the OpenAI service (Phase 5A) is
- * wired up end-to-end behind the compression pipeline. It:
+ * ⚠️  Development / debugging endpoint. Not part of the production
+ *     surface. In a production build this route is gated by
+ *     `devOnly()` and returns 404.
+ *
+ * Used to verify the OpenAI service (Phase 5A) is wired up
+ * end-to-end behind the compression pipeline. It:
  *
  *   1. Receives the compressed context (the payload Paritok
  *      returned) and the user's original question in the request
@@ -15,7 +19,7 @@
  * responsibility of `/api/dev/paritok` (or the in-page pipeline in
  * `app/dev/paritok/page.tsx`). This route is the second leg only.
  *
- * Response shape (mirrors `GenerateAnswerResult`):
+ * Response envelope (see `lib/api` for the full contract):
  *   { ok: true,  data: { answer, model, usage? } }
  *   { ok: false, error: { code, message, status? } }
  *
@@ -25,8 +29,7 @@
  * will replace this with a route that uses the real ask pipeline.
  */
 
-import { NextResponse } from "next/server";
-
+import { devOnly, errorResponse, okResponse, withApiHandler } from "@/lib/api";
 import { generateAnswer } from "@/lib/openai";
 
 export const dynamic = "force-dynamic";
@@ -37,22 +40,26 @@ interface RequestBody {
   question?: unknown;
 }
 
-export async function POST(request: Request) {
-  // Parse the body defensively — the dev page is the only caller
-  // and we want clear errors rather than a 500 when it's wrong.
-  let body: RequestBody;
+/**
+ * Body parsing for the dev route. We do not echo `err.message`
+ * back to the client — it may include Node internals — and we
+ * always return a sanitised 400 instead.
+ */
+async function readBody(request: Request): Promise<RequestBody | null> {
   try {
-    body = (await request.json()) as RequestBody;
+    return (await request.json()) as RequestBody;
   } catch {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message: "Request body must be valid JSON.",
-        },
-      },
-      { status: 400 },
+    return null;
+  }
+}
+
+const handler = withApiHandler(async (request: Request) => {
+  const body = await readBody(request);
+  if (body === null) {
+    return errorResponse(
+      "INVALID_REQUEST",
+      "Request body must be valid JSON.",
+      400,
     );
   }
 
@@ -60,27 +67,17 @@ export async function POST(request: Request) {
   const question = typeof body.question === "string" ? body.question : null;
 
   if (context === null) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message: "Missing or invalid 'context' (string required).",
-        },
-      },
-      { status: 400 },
+    return errorResponse(
+      "INVALID_REQUEST",
+      "Missing or invalid 'context' (string required).",
+      400,
     );
   }
   if (question === null || question.trim().length === 0) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message: "Missing or empty 'question' (non-empty string required).",
-        },
-      },
-      { status: 400 },
+    return errorResponse(
+      "INVALID_REQUEST",
+      "Missing or empty 'question' (non-empty string required).",
+      400,
     );
   }
 
@@ -96,27 +93,27 @@ export async function POST(request: Request) {
     // upstream failure. The OpenAI service does not dictate a
     // status; the route picks a reasonable one.
     const status = mapErrorStatus(result.error.code, result.error.status);
-    return NextResponse.json(
-      { ok: false, error: result.error },
-      { status },
-    );
+    return errorResponse(result.error.code, result.error.message, status, {
+      status: result.error.status,
+    });
   }
 
-  return NextResponse.json({
-    ok: true,
-    data: {
-      answer: result.answer,
-      model: result.model,
-      ...(result.usage ? { usage: result.usage } : {}),
-    },
-  });
-}
+  const data: { answer: string; model: string; usage?: typeof result.usage } = {
+    answer: result.answer,
+    model: result.model,
+  };
+  if (result.usage) {
+    data.usage = result.usage;
+  }
+  return okResponse(data);
+});
 
-export async function GET() {
-  // Allow GET as a convenience for the dev mock page so it can be
-  // hit with a browser refresh. POST is the canonical verb; this
-  // delegate exists for parity with `/api/dev/paritok`.
-  return POST(
+export const POST = devOnly(handler);
+
+// GET is gated the same way. It exists only as a convenience for
+// the dev mock page so the route can be hit with a browser refresh.
+export const GET = devOnly(async () =>
+  handler(
     new Request("http://local", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -125,8 +122,8 @@ export async function GET() {
         question: "How does authentication work?",
       }),
     }),
-  );
-}
+  ),
+);
 
 /* -------------------------------------------------------------------------- */
 /*  Internals                                                                 */
