@@ -22,6 +22,13 @@ import { useCallback, useState } from "react";
 import { Container } from "@/components/Container";
 import { Section } from "@/components/Section";
 import { Button } from "@/components/Button";
+import { compressContext } from "@/lib/pipeline";
+import { rankRelevantFiles } from "@/lib/ranking";
+import {
+  mockFileContents,
+  mockIndexedFiles,
+  mockRepository,
+} from "@/lib/context/mock";
 import type {
   ParitokCompressionResult,
   ParitokError,
@@ -86,6 +93,23 @@ export default function DevParitokPage() {
     }
   }, [question]);
 
+  /**
+   * Phase 4B2a — invokes the existing `compressContext()` pipeline
+   * directly (rank → Context Builder → Paritok). No loading state,
+   * no success/failure UI, no compressed-data display — clicking
+   * the button just calls the pipeline.
+   */
+  const runPipeline = useCallback(async () => {
+    const { ranked } = rankRelevantFiles(question, mockIndexedFiles, {
+      limit: 5,
+    });
+    await compressContext(question, ranked, mockRepository, {
+      contentSource: "inline",
+      contents: mockFileContents,
+      limit: 5,
+    });
+  }, [question]);
+
   return (
     <Section>
       <Container>
@@ -123,6 +147,13 @@ export default function DevParitokPage() {
                 disabled={state.kind === "loading"}
               >
                 {state.kind === "loading" ? "Compressing…" : "Run Paritok"}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => void runPipeline()}
+              >
+                Compress with Paritok
               </Button>
               <span className="text-xs text-navy-400">
                 Endpoint:&nbsp;
