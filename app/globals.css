@@ -2,55 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * RepoLens — Global styles
- * -----------------------------------------------------------------------------
- * CSS custom properties for the brand palette. These are the same values
- * exposed as Tailwind tokens (`brand.*`) and as the `brand` object in
- * `lib/brand/colors.ts`. Any of these three layers can be used; they all
- * resolve to the same canonical colors extracted from the logo.
- */
-:root {
-  /* Brand palette — single source of truth */
-  --brand-navy: #263442;
-  --brand-navy-600: #1f2a36;
-  --brand-navy-800: #1a2532;
-  --brand-navy-900: #101a24;
-
-  --brand-teal: #14977c;
-  --brand-teal-600: #0f8068;
-  --brand-teal-100: #d3efe7;
-
-  --brand-gold: #e0a74b;
-  --brand-gold-600: #c8902f;
-  --brand-gold-100: #fbeed3;
-
-  /* App surface colors (derived from the brand palette) */
-  --background: #070d1a;
-  --foreground: #f0f4fa;
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 210 30% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 30% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 30% 16%;
+    --primary: 210 30% 16%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 210 30% 16%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 210 30% 16%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 210 30% 16%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 210 30% 10%;
+    --foreground: 0 0% 98%;
+    --card: 210 30% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 210 30% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 210 30% 16%;
+    --secondary: 210 30% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 210 30% 18%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 210 30% 18%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 210 30% 20%;
+    --input: 210 30% 20%;
+    --ring: 0 0% 83.1%;
+  }
 }
 
 @layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   html {
     scroll-behavior: smooth;
   }
-
-  body {
-    @apply bg-navy-950 text-navy-50 antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-
-  ::selection {
-    @apply bg-brand-teal/30 text-white;
-  }
 }
 
-@layer components {
-  .text-gradient-brand {
-    @apply bg-gradient-to-r from-brand-teal to-brand-gold bg-clip-text text-transparent;
-  }
-
-  .text-gradient-emerald {
-    @apply bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent;
-  }
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
 }
