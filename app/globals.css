@@ -3,31 +3,39 @@
 @tailwind utilities;
 
 /*
- * RepoLens — Global styles
+ * RepoLens — Global styles (light theme redesign)
  * -----------------------------------------------------------------------------
- * CSS custom properties for the brand palette. These are the same values
- * exposed as Tailwind tokens (`brand.*`) and as the `brand` object in
- * `lib/brand/colors.ts`. Any of these three layers can be used; they all
- * resolve to the same canonical colors extracted from the logo.
+ * Bright, premium, spacious design language.
+ * Primary  : Deep Navy / Charcoal
+ * Secondary: Teal / Emerald
+ * Accent   : Warm Gold / Orange
  */
 :root {
-  /* Brand palette — single source of truth */
+  /* Brand palette */
   --brand-navy: #263442;
-  --brand-navy-600: #1f2a36;
-  --brand-navy-800: #1a2532;
-  --brand-navy-900: #101a24;
-
+  --brand-navy-strong: #1a2532;
   --brand-teal: #14977c;
   --brand-teal-600: #0f8068;
-  --brand-teal-100: #d3efe7;
-
+  --brand-teal-50: #ecf7f3;
   --brand-gold: #e0a74b;
   --brand-gold-600: #c8902f;
-  --brand-gold-100: #fbeed3;
+  --brand-gold-50: #fbf3e2;
 
-  /* App surface colors (derived from the brand palette) */
-  --background: #070d1a;
-  --foreground: #f0f4fa;
+  /* Semantic surface tokens */
+  --background: #ffffff;
+  --foreground: #22303c;
+  --card: #ffffff;
+  --card-foreground: #22303c;
+  --muted: #f5f8fa;
+  --muted-foreground: #647587;
+  --border: #e7ecf0;
+  --input: #e7ecf0;
+  --ring: #14977c;
+  --primary: #14977c;
+  --primary-foreground: #ffffff;
+  --accent: #e0a74b;
+  --accent-foreground: #22303c;
+  --radius: 0.875rem;
 }
 
 @layer base {
@@ -36,21 +44,28 @@
   }
 
   body {
-    @apply bg-navy-950 text-navy-50 antialiased;
+    @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
   ::selection {
-    @apply bg-brand-teal/30 text-white;
+    @apply bg-brand-teal/20 text-brand-navy;
   }
 }
 
 @layer components {
-  .text-gradient-brand {
-    @apply bg-gradient-to-r from-brand-teal to-brand-gold bg-clip-text text-transparent;
-  }
-
-  .text-gradient-emerald {
-    @apply bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent;
+  /* Soft page background wash used on landing + analyze */
+  .bg-page {
+    background-color: #ffffff;
+    background-image: radial-gradient(
+        60rem 40rem at 85% -5%,
+        rgba(20, 151, 124, 0.06),
+        transparent 60%
+      ),
+      radial-gradient(
+        50rem 35rem at 0% 5%,
+        rgba(224, 167, 75, 0.05),
+        transparent 55%
+      );
   }
 }

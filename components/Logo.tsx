@@ -1,40 +1,52 @@
+import Image from "next/image";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
   className?: string;
   /** Show the wordmark next to the mark. Defaults to true. */
   withWordmark?: boolean;
+  /** Pixel size of the square mark. */
+  size?: number;
+  /** Wrap in a link to home. Defaults to true. */
+  href?: string | null;
 }
 
 /**
- * RepoLens logo — a stylised lens/magnifier formed by concentric arcs
- * with an emerald accent dot. Pure SVG, no external assets.
+ * RepoLens logo — the official 3D "R" magnifier mark plus the
+ * "RepoLens" wordmark (Repo = navy, Lens = teal).
  */
-export function Logo({ className, withWordmark = true }: LogoProps) {
-  return (
-    <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <svg
-        width="28"
-        height="28"
-        viewBox="0 0 32 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <circle cx="14" cy="14" r="9" stroke="currentColor" strokeWidth="2" />
-        <path
-          d="M21 21L27 27"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <circle cx="14" cy="14" r="4" fill="#10b981" />
-      </svg>
+export function Logo({
+  className,
+  withWordmark = true,
+  size = 32,
+  href = "/",
+}: LogoProps) {
+  const content = (
+    <span className={cn("inline-flex items-center gap-2", className)}>
+      <Image
+        src="/assets/repolens-mark.png"
+        alt="RepoLens"
+        width={size}
+        height={size}
+        priority
+        className="h-auto w-auto"
+        style={{ width: size, height: size }}
+      />
       {withWordmark && (
-        <span className="text-base font-semibold tracking-tight text-white">
-          Repo<span className="text-emerald-400">Lens</span>
+        <span className="font-display text-lg font-extrabold tracking-tight text-brand-navy">
+          Repo<span className="text-brand-teal">Lens</span>
         </span>
       )}
     </span>
   );
+
+  if (href) {
+    return (
+      <Link href={href} aria-label="RepoLens home" className="inline-flex">
+        {content}
+      </Link>
+    );
+  }
+  return content;
 }

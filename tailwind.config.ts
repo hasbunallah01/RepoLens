@@ -1,17 +1,11 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Tailwind config — RepoLens
+ * Tailwind config — RepoLens (light theme redesign)
  * -----------------------------------------------------------------------------
- * Brand color tokens live in `lib/brand/colors.ts` and are mirrored here as
- * the `brand.*` namespace. Those are the canonical brand colors extracted
- * from the official logo. Use `bg-brand-navy`, `text-brand-teal`, etc.
- *
- * The legacy `navy.*` and `emerald.*` scales are retained for backward
- * compatibility with components written before the brand system landed.
- * Prefer `brand.*` for any new code.
+ * Semantic tokens are backed by CSS variables defined in app/globals.css.
+ * Brand tokens (navy / teal / gold) are the canonical colors from the logo.
  */
-
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -20,68 +14,67 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // -------------------------------------------------------------------------
-        // Brand palette (source of truth: lib/brand/colors.ts)
-        // -------------------------------------------------------------------------
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        // Brand palette (canonical)
         brand: {
-          // PRIMARY — Deep Navy / Charcoal
           navy: {
             DEFAULT: "#263442",
-            600: "#1f2a36",
-            800: "#1a2532",
-            900: "#101a24",
+            strong: "#1a2532",
           },
-          // SECONDARY — Teal / Emerald
           teal: {
             DEFAULT: "#14977c",
             600: "#0f8068",
-            100: "#d3efe7",
+            50: "#ecf7f3",
           },
-          // ACCENT — Warm Gold / Orange
           gold: {
             DEFAULT: "#e0a74b",
             600: "#c8902f",
-            100: "#fbeed3",
+            50: "#fbf3e2",
           },
-        },
-        // -------------------------------------------------------------------------
-        // Legacy palettes (kept for backward compatibility — prefer `brand.*`)
-        // -------------------------------------------------------------------------
-        navy: {
-          50: "#f0f4fa",
-          100: "#dae4f2",
-          200: "#b5c9e5",
-          300: "#8ba8d3",
-          400: "#5e83bc",
-          500: "#3f64a3",
-          600: "#314f87",
-          700: "#283f6b",
-          800: "#1d2d4d",
-          900: "#0f1a2e",
-          950: "#070d1a",
-        },
-        emerald: {
-          50: "#ecfdf5",
-          100: "#d1fae5",
-          200: "#a7f3d0",
-          300: "#6ee7b7",
-          400: "#34d399",
-          500: "#10b981",
-          600: "#059669",
-          700: "#047857",
-          800: "#065f46",
-          900: "#064e3b",
         },
       },
       fontFamily: {
-        sans: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: [
+          "var(--font-jakarta)",
+          "var(--font-inter)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "monospace"],
       },
-      backgroundImage: {
-        "navy-gradient":
-          "radial-gradient(ellipse at top, rgba(20,151,124,0.10), transparent 60%), linear-gradient(180deg, #101a24 0%, #070d1a 100%)",
-        "brand-gradient":
-          "linear-gradient(135deg, #14977c 0%, #e0a74b 100%)",
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+      },
+      boxShadow: {
+        card: "0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06)",
+        "card-hover":
+          "0 4px 8px rgba(16, 24, 40, 0.06), 0 16px 40px rgba(16, 24, 40, 0.10)",
+        soft: "0 1px 3px rgba(16, 24, 40, 0.06)",
+        float: "0 10px 30px rgba(16, 24, 40, 0.12)",
       },
     },
   },

@@ -1,41 +1,57 @@
 import Link from "next/link";
-import { Container } from "./Container";
-import { Logo } from "./Logo";
+import { Heart } from "lucide-react";
+import { Container } from "@/components/Container";
+import { Logo } from "@/components/Logo";
+
+const FOOTER_LINKS = [
+  { label: "Home", href: "/" },
+  { label: "Analyze", href: "/analyze" },
+  { label: "Ask", href: "/ask" },
+  { label: "About", href: "/about" },
+  { label: "Docs", href: "/docs" },
+];
 
 /**
- * Site-wide footer with project attribution and quick links.
+ * Site-wide footer: logo, quick links, attribution + copyright.
  */
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-navy-800/60 bg-navy-950">
-      <Container className="flex flex-col items-start gap-6 py-10 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col gap-2">
-          <Logo />
-          <p className="text-sm text-navy-300">
-            Understand any codebase with fewer tokens.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 text-sm text-navy-300 md:items-end">
-          <div className="flex items-center gap-5">
-            <Link href="/" className="hover:text-white">
-              Home
-            </Link>
-            <Link href="/about" className="hover:text-white">
-              About
-            </Link>
+    <footer className="border-t border-border bg-background">
+      <Container className="py-8">
+        <div className="flex flex-col items-center gap-6 md:flex-row md:justify-between">
+          <Logo size={28} />
+
+          <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
+            {FOOTER_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-brand-navy/70 transition-colors hover:text-brand-teal"
+              >
+                {link.label}
+              </Link>
+            ))}
             <a
               href="https://github.com/hasbunallah01/RepoLens"
               target="_blank"
               rel="noreferrer noopener"
-              className="hover:text-white"
+              className="text-sm font-medium text-brand-navy/70 transition-colors hover:text-brand-teal"
             >
               GitHub
             </a>
+          </nav>
+
+          <div className="flex flex-col items-center gap-1 md:items-end">
+            <p className="flex items-center gap-1.5 text-sm text-brand-navy/80">
+              Made with
+              <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+              for developers
+            </p>
+            <p className="text-xs text-muted-foreground">
+              © {year} RepoLens. All rights reserved.
+            </p>
           </div>
-          <p className="text-xs text-navy-400">
-            © {year} RepoLens. Built for the Build with Paritok Hackathon.
-          </p>
         </div>
       </Container>
     </footer>

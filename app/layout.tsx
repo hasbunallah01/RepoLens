@@ -1,23 +1,36 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import "./globals.css";
 
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
-    default: "RepoLens — Understand any codebase with fewer tokens",
+    default: "RepoLens — Understand Any GitHub Repository with AI",
     template: "%s · RepoLens",
   },
   description:
-    "RepoLens helps developers understand any GitHub repository by retrieving only the relevant code before sending requests through Paritok, reducing token usage while maintaining answer quality.",
+    "RepoLens analyzes repositories, builds intelligent context, and answers natural-language questions about the codebase.",
   applicationName: "RepoLens",
   authors: [{ name: "RepoLens" }],
   keywords: [
     "RepoLens",
-    "Paritok",
-    "Token Efficiency",
     "GitHub",
+    "Repository Intelligence",
     "Codebase AI",
     "Developer Tools",
   ],
@@ -28,25 +41,27 @@ export const metadata: Metadata = {
       { url: "/favicon/favicon.ico", sizes: "any" },
     ],
     apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-    other: [
-      { rel: "android-chrome-192x192", url: "/favicon/android-chrome-192x192.png" },
-      { rel: "android-chrome-512x512", url: "/favicon/android-chrome-512x512.png" },
-    ],
   },
   openGraph: {
-    title: "RepoLens — Understand any codebase with fewer tokens",
+    title: "RepoLens — Understand Any GitHub Repository with AI",
     description:
-      "Token-efficient codebase understanding, powered by Paritok. Built for the Build with Paritok Hackathon.",
+      "Analyze repositories, build intelligent context, and ask natural-language questions about any codebase.",
     type: "website",
-    images: [{ url: "/assets/logo.png", alt: "RepoLens logo" }],
+    images: [{ url: "/assets/repolens-mark.png", alt: "RepoLens logo" }],
   },
   robots: { index: true, follow: true },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen flex flex-col bg-navy-gradient">
+    <html lang="en" className={`${inter.variable} ${jakarta.variable} bg-background`}>
+      <body className="min-h-screen flex flex-col bg-page font-sans text-foreground">
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
