@@ -1,36 +1,36 @@
-import { Button } from "./Button";
+import { HeroIllustration } from "./HeroIllustration";
+import { HeroSearch } from "./HeroSearch";
+import { SparkleIcon } from "./icons";
 
 /**
- * Hero block for the home page.
- * Phase 1: headline, tagline, and a non-functional CTA.
+ * Hero block for the home page: badge, headline, sub-copy, repository
+ * search, and the illustration — two columns on desktop, stacked on mobile.
  */
 export function Hero() {
   return (
-    <div className="flex flex-col items-center text-center">
-      <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-navy-700 bg-navy-900/60 px-3 py-1 text-xs font-medium text-navy-100">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        Built for the Build with Paritok Hackathon
-      </span>
+    <div className="grid grid-cols-1 items-center gap-12 md:grid-cols-2 md:gap-8">
+      <div className="flex flex-col items-start text-left">
+        <span className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-brand-gold/30 bg-brand-gold-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand-gold-600">
+          <SparkleIcon className="h-3 w-3" />
+          AI-Powered Repository Intelligence
+        </span>
 
-      <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
-        Understand any codebase with{" "}
-        <span className="text-gradient-emerald">fewer tokens</span>.
-      </h1>
+        <h1 className="max-w-xl text-4xl font-extrabold leading-tight tracking-tight text-brand-navy sm:text-5xl">
+          Understand Any GitHub Repository{" "}
+          <span className="text-brand-teal">with AI.</span>
+        </h1>
 
-      <p className="mt-6 max-w-2xl text-base text-navy-200 sm:text-lg">
-        RepoLens is the developer&apos;s lens into any GitHub repository. Stop
-        dumping entire codebases into prompts — let RepoLens retrieve only what
-        matters and route it through Paritok for maximum token efficiency.
-      </p>
+        <p className="mt-5 max-w-lg text-base text-slate-500 sm:text-lg">
+          RepoLens analyzes repositories, builds intelligent context, and
+          answers natural-language questions about the codebase.
+        </p>
 
-      <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
-        <Button href="/analyze" size="lg">
-          Analyze Repository
-        </Button>
-        <Button href="/about" variant="secondary" size="lg">
-          Learn more
-        </Button>
+        <div className="mt-8 w-full max-w-xl">
+          <HeroSearch />
+        </div>
       </div>
+
+      <HeroIllustration />
     </div>
   );
 }

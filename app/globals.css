@@ -12,22 +12,24 @@
  */
 :root {
   /* Brand palette — single source of truth */
-  --brand-navy: #263442;
+  --brand-navy: #0d1b2a;
   --brand-navy-600: #1f2a36;
   --brand-navy-800: #1a2532;
   --brand-navy-900: #101a24;
 
-  --brand-teal: #14977c;
-  --brand-teal-600: #0f8068;
+  --brand-teal: #0c8974;
+  --brand-teal-50: #e9f8f5;
   --brand-teal-100: #d3efe7;
+  --brand-teal-600: #0a7362;
 
-  --brand-gold: #e0a74b;
-  --brand-gold-600: #c8902f;
-  --brand-gold-100: #fbeed3;
+  --brand-gold: #f1962a;
+  --brand-gold-50: #fdf4e9;
+  --brand-gold-100: #fcead1;
+  --brand-gold-600: #d97f1a;
 
   /* App surface colors (derived from the brand palette) */
-  --background: #070d1a;
-  --foreground: #f0f4fa;
+  --background: #ffffff;
+  --foreground: #0d1b2a;
 }
 
 @layer base {
@@ -36,21 +38,17 @@
   }
 
   body {
-    @apply bg-navy-950 text-navy-50 antialiased;
+    @apply bg-white text-brand-navy antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
   ::selection {
-    @apply bg-brand-teal/30 text-white;
+    @apply bg-brand-teal/20 text-brand-navy;
   }
 }
 
 @layer components {
   .text-gradient-brand {
     @apply bg-gradient-to-r from-brand-teal to-brand-gold bg-clip-text text-transparent;
-  }
-
-  .text-gradient-emerald {
-    @apply bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent;
   }
 }

@@ -24,24 +24,32 @@ const config: Config = {
         // Brand palette (source of truth: lib/brand/colors.ts)
         // -------------------------------------------------------------------------
         brand: {
-          // PRIMARY — Deep Navy / Charcoal
+          // PRIMARY — Deep Navy / Charcoal (headings, body copy)
           navy: {
-            DEFAULT: "#263442",
+            DEFAULT: "#0d1b2a",
             600: "#1f2a36",
             800: "#1a2532",
             900: "#101a24",
           },
-          // SECONDARY — Teal / Emerald
+          // SECONDARY — Teal / Emerald (buttons, links, icons)
           teal: {
-            DEFAULT: "#14977c",
-            600: "#0f8068",
+            DEFAULT: "#0c8974",
+            50: "#e9f8f5",
             100: "#d3efe7",
+            600: "#0a7362",
+            700: "#075e50",
           },
-          // ACCENT — Warm Gold / Orange
+          // ACCENT — Warm Gold / Orange (badges, icon accents)
           gold: {
-            DEFAULT: "#e0a74b",
-            600: "#c8902f",
-            100: "#fbeed3",
+            DEFAULT: "#f1962a",
+            50: "#fdf4e9",
+            100: "#fcead1",
+            600: "#d97f1a",
+          },
+          // Neutral grays for body copy on the light theme
+          slate: {
+            500: "#64748b",
+            600: "#475569",
           },
         },
         // -------------------------------------------------------------------------
@@ -78,10 +86,10 @@ const config: Config = {
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "monospace"],
       },
       backgroundImage: {
-        "navy-gradient":
-          "radial-gradient(ellipse at top, rgba(20,151,124,0.10), transparent 60%), linear-gradient(180deg, #101a24 0%, #070d1a 100%)",
+        "light-gradient":
+          "radial-gradient(ellipse at top, rgba(12,137,116,0.06), transparent 55%), linear-gradient(180deg, #ffffff 0%, #ffffff 100%)",
         "brand-gradient":
-          "linear-gradient(135deg, #14977c 0%, #e0a74b 100%)",
+          "linear-gradient(135deg, #0c8974 0%, #f1962a 100%)",
       },
     },
   },

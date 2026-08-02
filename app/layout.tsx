@@ -6,11 +6,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "RepoLens — Understand any codebase with fewer tokens",
+    default: "RepoLens – Understand Any GitHub Repository",
     template: "%s · RepoLens",
   },
   description:
-    "RepoLens helps developers understand any GitHub repository by retrieving only the relevant code before sending requests through Paritok, reducing token usage while maintaining answer quality.",
+    "RepoLens analyzes repositories, builds intelligent context, and answers natural-language questions about the codebase.",
   applicationName: "RepoLens",
   authors: [{ name: "RepoLens" }],
   keywords: [
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen flex flex-col bg-navy-gradient">
+    <html lang="en">
+      <body className="min-h-screen flex flex-col bg-white">
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />

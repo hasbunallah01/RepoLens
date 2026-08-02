@@ -2,41 +2,59 @@ import Link from "next/link";
 import { Container } from "./Container";
 import { Logo } from "./Logo";
 
+const FOOTER_LINKS: { label: string; href: string; external?: boolean }[] = [
+  { label: "Home", href: "/" },
+  { label: "Analyze", href: "/analyze" },
+  { label: "Ask", href: "/ask" },
+  { label: "About", href: "/about" },
+  {
+    label: "Docs",
+    href: "https://github.com/hasbunallah01/RepoLens/tree/main/docs",
+    external: true,
+  },
+  {
+    label: "GitHub",
+    href: "https://github.com/hasbunallah01/RepoLens",
+    external: true,
+  },
+];
+
 /**
  * Site-wide footer with project attribution and quick links.
  */
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-navy-800/60 bg-navy-950">
-      <Container className="flex flex-col items-start gap-6 py-10 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-col gap-2">
-          <Logo />
-          <p className="text-sm text-navy-300">
-            Understand any codebase with fewer tokens.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 text-sm text-navy-300 md:items-end">
-          <div className="flex items-center gap-5">
-            <Link href="/" className="hover:text-white">
-              Home
-            </Link>
-            <Link href="/about" className="hover:text-white">
-              About
-            </Link>
-            <a
-              href="https://github.com/hasbunallah01/RepoLens"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="hover:text-white"
-            >
-              GitHub
-            </a>
-          </div>
-          <p className="text-xs text-navy-400">
-            © {year} RepoLens. Built for the Build with Paritok Hackathon.
-          </p>
-        </div>
+    <footer className="border-t border-slate-100 bg-white">
+      <Container className="flex flex-col items-center gap-6 py-12 text-center">
+        <Logo size={28} />
+
+        <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-600">
+          {FOOTER_LINKS.map((link) =>
+            link.external ? (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="hover:text-brand-navy"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link key={link.href} href={link.href} className="hover:text-brand-navy">
+                {link.label}
+              </Link>
+            ),
+          )}
+        </nav>
+
+        <p className="text-sm text-slate-500">
+          Made with <span aria-hidden="true">❤️</span> for developers
+        </p>
+        <p className="text-xs text-slate-400">
+          © {year} RepoLens. All rights reserved.
+        </p>
       </Container>
     </footer>
   );
