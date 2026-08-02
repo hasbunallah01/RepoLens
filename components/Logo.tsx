@@ -21,18 +21,18 @@ export function Logo({ className, withWordmark = true }: LogoProps) {
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
       >
-        <circle cx="14" cy="14" r="9" stroke="#263442" strokeWidth="2" />
+        <circle cx="14" cy="14" r="9" stroke="currentColor" strokeWidth="2" />
         <path
           d="M21 21L27 27"
-          stroke="#263442"
+          stroke="currentColor"
           strokeWidth="2"
           strokeLinecap="round"
         />
-        <circle cx="14" cy="14" r="4" fill="#14977c" />
+        <circle cx="14" cy="14" r="4" fill="#10b981" />
       </svg>
       {withWordmark && (
-        <span className="text-base font-semibold tracking-tight text-brand-navy">
-          Repo<span className="text-brand-teal">Lens</span>
+        <span className="text-base font-semibold tracking-tight text-white">
+          Repo<span className="text-emerald-400">Lens</span>
         </span>
       )}
     </span>

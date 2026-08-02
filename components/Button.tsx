@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost" | "brand" | "brand-outline";
+type Variant = "primary" | "secondary" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const baseStyles =
@@ -16,13 +16,6 @@ const variantStyles: Record<Variant, string> = {
   secondary:
     "border border-navy-700 bg-navy-900/50 text-navy-50 hover:bg-navy-800 hover:border-navy-600",
   ghost: "text-navy-100 hover:bg-navy-800/60",
-  // Light-theme variants for the marketing landing page.
-  brand:
-    "bg-brand-teal text-white shadow-lg shadow-brand-teal/20 hover:bg-brand-teal-600 " +
-    "focus-visible:ring-brand-teal focus-visible:ring-offset-white",
-  "brand-outline":
-    "border border-slate-200 bg-white text-brand-navy hover:border-brand-teal/40 hover:bg-brand-teal-100/30 " +
-    "focus-visible:ring-brand-teal focus-visible:ring-offset-white",
 };
 
 const sizeStyles: Record<Size, string> = {

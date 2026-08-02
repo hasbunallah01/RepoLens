@@ -8,48 +8,35 @@ import { Logo } from "./Logo";
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-slate-200 bg-white">
-      <Container className="py-10">
-        <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+    <footer className="border-t border-navy-800/60 bg-navy-950">
+      <Container className="flex flex-col items-start gap-6 py-10 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2">
           <Logo />
-
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600">
-            <Link href="/" className="hover:text-brand-navy">
+          <p className="text-sm text-navy-300">
+            Understand any codebase with fewer tokens.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 text-sm text-navy-300 md:items-end">
+          <div className="flex items-center gap-5">
+            <Link href="/" className="hover:text-white">
               Home
             </Link>
-            <Link href="/analyze" className="hover:text-brand-navy">
-              Analyze
-            </Link>
-            <Link href="/ask" className="hover:text-brand-navy">
-              Ask
-            </Link>
-            <Link href="/about" className="hover:text-brand-navy">
+            <Link href="/about" className="hover:text-white">
               About
             </Link>
-            <a
-              href="https://github.com/hasbunallah01/RepoLens#readme"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="hover:text-brand-navy"
-            >
-              Docs
-            </a>
             <a
               href="https://github.com/hasbunallah01/RepoLens"
               target="_blank"
               rel="noreferrer noopener"
-              className="hover:text-brand-navy"
+              className="hover:text-white"
             >
               GitHub
             </a>
-          </nav>
-
-          <p className="text-sm text-slate-500">Made with ❤️ for developers</p>
+          </div>
+          <p className="text-xs text-navy-400">
+            © {year} RepoLens. Built for the Build with Paritok Hackathon.
+          </p>
         </div>
-
-        <p className="mt-8 border-t border-slate-100 pt-6 text-center text-xs text-slate-400">
-          © {year} RepoLens. All rights reserved.
-        </p>
       </Container>
     </footer>
   );
