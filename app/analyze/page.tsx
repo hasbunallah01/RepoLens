@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Search,
@@ -50,6 +50,14 @@ const MOCK_CHAT: ChatMessage[] = [
 ];
 
 export default function AnalyzePage() {
+  return (
+    <Suspense fallback={null}>
+      <AnalyzePageInner />
+    </Suspense>
+  );
+}
+
+function AnalyzePageInner() {
   const { theme, toggleTheme } = useTheme();
   const searchParams = useSearchParams();
   const repoParam = searchParams.get('repo');
@@ -138,7 +146,7 @@ export default function AnalyzePage() {
                 <h3 className="text-sm font-semibold text-[#1C2B3A]">Repository Structure</h3>
               </div>
               <div className="space-y-0.5 text-sm">
-                {MOCK_REPO_STRUCTURE[0].children.map((item, idx) => (
+                {MOCK_REPO_STRUCTURE[0]!.children.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer transition-colors">
                     <ChevronRight size={12} className="text-gray-300" />
                     <Folder size={14} className="text-[#F59E0B]" />
