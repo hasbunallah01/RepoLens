@@ -115,7 +115,7 @@ export default function AnalyzePage() {
                     <IndexedFiles files={data.index.files.slice(0, 12)} />
                   </div>
 
-                  <BottomCTA />
+                  <BottomCTA href={`/ask?repo=${encodeURIComponent(data.metadata.fullName)}`} />
                 </>
               ) : null}
 
