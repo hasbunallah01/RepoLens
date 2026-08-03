@@ -21,6 +21,42 @@ const config: Config = {
     extend: {
       colors: {
         // -------------------------------------------------------------------------
+        // shadcn/ui-style CSS variable aliases (used by app/globals.css)
+        // -------------------------------------------------------------------------
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        // -------------------------------------------------------------------------
         // Brand palette (source of truth: lib/brand/colors.ts)
         // -------------------------------------------------------------------------
         brand: {
@@ -86,6 +122,26 @@ const config: Config = {
     },
   },
   plugins: [],
+  safelist: [
+    "border-border",
+    "bg-background",
+    "text-foreground",
+    "bg-primary",
+    "text-primary-foreground",
+    "bg-secondary",
+    "text-secondary-foreground",
+    "bg-muted",
+    "text-muted-foreground",
+    "bg-accent",
+    "text-accent-foreground",
+    "bg-destructive",
+    "text-destructive-foreground",
+    "bg-card",
+    "text-card-foreground",
+    "bg-popover",
+    "text-popover-foreground",
+    "ring-ring",
+  ],
 };
 
 export default config;
