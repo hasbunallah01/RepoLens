@@ -2,10 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ClockIcon, PulseIcon } from "@/components/icons";
-import { ANALYSIS_STEPS, MOCK_EXTRA_STATS } from "@/lib/mock-analyze-data";
+import { ANALYSIS_STEPS } from "@/lib/mock-analyze-data";
 
 interface AnalysisProgressProps {
   onComplete: () => void;
+  /**
+   * Total file count used as the denominator for the "files
+   * analyzed" counter. Defaults to a non-zero placeholder when no
+   * data is in hand yet (e.g. before the first request resolves).
+   */
+  totalFiles?: number;
+  /**
+   * When `true`, the progress bar jumps to 100 % and `onComplete`
+   * fires shortly after. Set this from the parent when the real
+   * analysis response (or error) has arrived so the simulated
+   * loading state yields to the real data without making the user
+   * stare at a half-finished progress bar.
+   */
+  completed?: boolean;
   /** Total simulated duration in ms. Exposed for tests/tuning. */
   durationMs?: number;
 }
@@ -16,32 +30,57 @@ type StepStatus = "done" | "active" | "pending";
  * Animated "Analysis in Progress" card: staged steps, a progress bar,
  * an elapsed-time clock, and a live files-analyzed counter.
  *
- * This is a client-side simulation — the real /api/analyze endpoint
- * today resolves in a single round trip with no step-level progress
- * events. See PR notes for what the backend would need to stream this
- * for real (SSE/WebSocket progress events per pipeline stage).
+ * The visual is a *client-side simulation*: the real `/api/analyze`
+ * route resolves in a single round trip with no per-stage events.
+ * We drive the steps off an elapsed-time fraction and let the parent
+ * short-circuit the simulation the moment a real response (or error)
+ * comes back via the `completed` prop — at which point the bar fills
+ * to 100 % and `onComplete` fires.
  */
-export function AnalysisProgress({ onComplete, durationMs = 6000 }: AnalysisProgressProps) {
+export function AnalysisProgress({
+  onComplete,
+  totalFiles,
+  completed = false,
+  durationMs = 6000,
+}: AnalysisProgressProps) {
   const [percent, setPercent] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
   const startRef = useRef<number>(Date.now());
   const doneRef = useRef(false);
 
+  // The denominator for the "files analyzed" counter. Until the
+  // backend response arrives we have no real total; show 0/0 rather
+  // than a fake number so the user knows the count is still pending.
+  const fileDenominator = totalFiles ?? 0;
+
+  // Simulated progress. Drives the visual bar / counter off
+  // elapsed time, but only ever yields to the parent via the
+  // `completed` prop — we never fire `onComplete` ourselves based
+  // on a wall-clock duration, because the real backend may take
+  // longer than the simulation (or finish sooner). Letting the
+  // parent decide is what keeps the page from flashing an empty
+  // "done" state ahead of the actual response.
   useEffect(() => {
     startRef.current = Date.now();
     const tick = setInterval(() => {
       const elapsed = Date.now() - startRef.current;
       setElapsedMs(elapsed);
+      if (completed) return;
       const pct = Math.min(100, Math.round((elapsed / durationMs) * 100));
       setPercent(pct);
-      if (pct >= 100 && !doneRef.current) {
-        doneRef.current = true;
-        clearInterval(tick);
-        setTimeout(onComplete, 500);
-      }
     }, 80);
     return () => clearInterval(tick);
-  }, [durationMs, onComplete]);
+  }, [durationMs, completed]);
+
+  // When the parent says the real request is done, fill the bar and
+  // call onComplete. Guarded so we only fire once per mount.
+  useEffect(() => {
+    if (!completed || doneRef.current) return;
+    doneRef.current = true;
+    setPercent(100);
+    const t = setTimeout(() => onComplete(), 400);
+    return () => clearTimeout(t);
+  }, [completed, onComplete]);
 
   const getStatus = (i: number): StepStatus => {
     const threshold = ((i + 1) / ANALYSIS_STEPS.length) * 100;
@@ -52,8 +91,8 @@ export function AnalysisProgress({ onComplete, durationMs = 6000 }: AnalysisProg
   };
 
   const filesAnalyzed = Math.min(
-    MOCK_EXTRA_STATS.totalFiles,
-    Math.round((percent / 100) * MOCK_EXTRA_STATS.totalFiles),
+    fileDenominator,
+    Math.round((percent / 100) * fileDenominator),
   );
 
   return (
@@ -122,7 +161,9 @@ export function AnalysisProgress({ onComplete, durationMs = 6000 }: AnalysisProg
           Elapsed time: {formatElapsed(elapsedMs)}
         </span>
         <span>
-          Analyzing {filesAnalyzed.toLocaleString()} / {MOCK_EXTRA_STATS.totalFiles.toLocaleString()} files
+          {fileDenominator > 0
+            ? `Analyzing ${filesAnalyzed.toLocaleString()} / ${fileDenominator.toLocaleString()} files`
+            : "Awaiting repository data…"}
         </span>
       </div>
     </div>
