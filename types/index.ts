@@ -10,7 +10,7 @@
 export interface Feature {
   title: string;
   description: string;
-  icon: "search" | "message" | "sparkles" | "chart";
+  icon: "search" | "message" | "sparkles" | "chart" | "lightning" | "robot" | "folder" | "layers" | "globe";
 }
 
 /** Navigation link used by the Navbar and Footer. */

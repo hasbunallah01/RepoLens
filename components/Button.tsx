@@ -6,21 +6,21 @@ type Variant = "primary" | "secondary" | "ghost";
 type Size = "sm" | "md" | "lg";
 
 const baseStyles =
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 " +
-  "focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal " +
+  "focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50";
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    "bg-emerald-500 text-navy-950 hover:bg-emerald-400 active:bg-emerald-600 shadow-lg shadow-emerald-500/20",
+    "bg-brand-teal text-white hover:bg-brand-teal-600 active:bg-brand-teal-700 shadow-sm shadow-brand-teal/20",
   secondary:
-    "border border-navy-700 bg-navy-900/50 text-navy-50 hover:bg-navy-800 hover:border-navy-600",
-  ghost: "text-navy-100 hover:bg-navy-800/60",
+    "border border-slate-200 bg-white text-brand-navy hover:bg-slate-50 hover:border-slate-300",
+  ghost: "text-brand-navy hover:bg-slate-100",
 };
 
 const sizeStyles: Record<Size, string> = {
   sm: "h-9 px-3 text-sm",
-  md: "h-10 px-4 text-sm",
+  md: "h-11 px-4 text-sm",
   lg: "h-12 px-6 text-base",
 };
 
@@ -45,7 +45,6 @@ export type ButtonProps = ButtonAsButton | ButtonAsLink;
 
 /**
  * Polymorphic button. Renders as <a> when `href` is provided, otherwise <button>.
- * Phase 1 keeps it non-functional where appropriate (e.g. the "Analyze" CTA).
  */
 export function Button(props: ButtonProps) {
   const { variant = "primary", size = "md", className, children } = props;

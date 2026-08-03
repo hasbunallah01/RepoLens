@@ -1,43 +1,61 @@
-import Link from 'next/link';
-import Logo from './Logo';
-import { Heart } from 'lucide-react';
+import Link from "next/link";
+import { Container } from "./Container";
+import { Logo } from "./Logo";
 
-const FOOTER_LINKS = [
-  { href: '/', label: 'Home' },
-  { href: '/analyze', label: 'Analyze' },
-  { href: '/ask', label: 'Ask' },
-  { href: '/about', label: 'About' },
-  { href: '/docs', label: 'Docs' },
-  { href: 'https://github.com/hasbunallah01/RepoLens', label: 'GitHub' },
+const FOOTER_LINKS: { label: string; href: string; external?: boolean }[] = [
+  { label: "Home", href: "/" },
+  { label: "Analyze", href: "/analyze" },
+  { label: "Ask", href: "/ask" },
+  { label: "About", href: "/about" },
+  {
+    label: "Docs",
+    href: "https://github.com/hasbunallah01/RepoLens/tree/main/docs",
+    external: true,
+  },
+  {
+    label: "GitHub",
+    href: "https://github.com/hasbunallah01/RepoLens",
+    external: true,
+  },
 ];
 
-export default function Footer() {
+/**
+ * Site-wide footer with project attribution and quick links.
+ */
+export function Footer() {
+  const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-gray-100 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo size={28} />
-            <span className="text-base font-bold">
-              <span className="text-[#1C2B3A]">Repo</span>
-              <span className="text-[#0D9A7A]">Lens</span>
-            </span>
-          </Link>
-          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1">
-            {FOOTER_LINKS.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm text-gray-500 hover:text-gray-800 transition-colors" target={link.href.startsWith('http') ? '_blank' : undefined} rel={link.href.startsWith('http') ? 'noopener noreferrer' : undefined}>
+    <footer className="border-t border-slate-100 bg-white">
+      <Container className="flex flex-col items-center gap-6 py-12 text-center">
+        <Logo size={28} />
+
+        <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-slate-600">
+          {FOOTER_LINKS.map((link) =>
+            link.external ? (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="hover:text-brand-navy"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link key={link.href} href={link.href} className="hover:text-brand-navy">
                 {link.label}
               </Link>
-            ))}
-          </nav>
-          <div className="flex flex-col items-center md:items-end gap-0.5">
-            <span className="flex items-center gap-1 text-xs text-gray-400">
-              Made with <Heart size={11} className="text-red-500 fill-red-500" /> for developers
-            </span>
-            <span className="text-xs text-gray-400">© 2025 RepoLens. All rights reserved.</span>
-          </div>
-        </div>
-      </div>
+            ),
+          )}
+        </nav>
+
+        <p className="text-sm text-slate-500">
+          Made with <span aria-hidden="true">❤️</span> for developers
+        </p>
+        <p className="text-xs text-slate-400">
+          © {year} RepoLens. All rights reserved.
+        </p>
+      </Container>
     </footer>
   );
 }
