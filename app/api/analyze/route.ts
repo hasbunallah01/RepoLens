@@ -51,7 +51,7 @@ import { errorResponse, okResponse, withApiHandler } from "@/lib/api";
 import { parseGitHubUrl } from "@/lib/github/parse-url";
 import { fetchRecentCommits, fetchRepoMetadata, fetchRepoTree } from "@/lib/github/api";
 import { GitHubApiError } from "@/lib/github/client";
-import { buildIndex } from "@/lib/indexer";
+import { buildIndex, estimateLinesOfCode } from "@/lib/indexer";
 import {
   fetchRankedFileContents,
   rankRelevantFiles,
@@ -95,6 +95,18 @@ export const GET = withApiHandler(async (request: Request) => {
   // for that id reconstructs the timeline.
   const log = createRequestLogger();
   log.logStage("request_received");
+
+  // ----------------------------------------------------------------
+  //  Analysis timing (Backend 8A)
+  //  `analysisStartedAt` is captured as early as possible so the
+  //  reported `analysisDurationMs` reflects the full backend cost
+  //  (URL parse + GitHub fetch + index build + commit fetch) and
+  //  is not affected by the optional AI pipeline that runs when a
+  //  `?question=` query param is supplied. The completion timestamp
+  //  (`analyzedAt`) is set right before the response is built, so
+  //  it marks the moment the index is fully ready.
+  // ----------------------------------------------------------------
+  const analysisStartedAt = Date.now();
 
   const { searchParams } = new URL(request.url);
   const url = searchParams.get("url") ?? "";
@@ -142,12 +154,37 @@ export const GET = withApiHandler(async (request: Request) => {
       truncated: tree.truncated,
     });
 
+    // ----------------------------------------------------------------
+    //  Lines of code (Backend 8A)
+    //  Estimated from the indexed files using language-specific
+    //  average line widths. The estimation reuses the same
+    //  `IndexedFile[]` the rest of the index already operates on,
+    //  so binary / image / archive / lock files are *already*
+    //  excluded upstream by `shouldIgnorePath` — we never need
+    //  to re-derive that filter here.
+    // ----------------------------------------------------------------
+    const linesOfCode = estimateLinesOfCode(index.files);
+
+    // ----------------------------------------------------------------
+    //  Analysis completion timestamp + duration (Backend 8A)
+    //  Captured before building the response so the values reflect
+    //  the moment the index is fully ready, not the moment the
+    //  handler returns. `analysisDurationMs` is the wall-clock
+    //  cost of the full analyse pass (URL parse → GitHub fetch
+    //  → index build → commit fetch).
+    // ----------------------------------------------------------------
+    const analyzedAt = new Date().toISOString();
+    const analysisDurationMs = Date.now() - analysisStartedAt;
+
     const result: AnalysisResult = {
       url: parsed.value.raw,
       metadata,
       index,
       commits,
       fetchedAt: new Date().toISOString(),
+      analyzedAt,
+      analysisDurationMs,
+      linesOfCode,
     };
 
     // No `question` query param: this is the original production

@@ -76,6 +76,7 @@ export function buildIndex(rawTree: RawTree, options: BuildIndexOptions = {}): R
   const languages = aggregateLanguages(files, totalSizeBytes);
   const rootFolders = collectRootFolders(files);
   const extensions = collectExtensions(files);
+  const directoryCount = countDirectories(files);
 
   return {
     files,
@@ -86,6 +87,7 @@ export function buildIndex(rawTree: RawTree, options: BuildIndexOptions = {}): R
     hasReadme,
     rootFolders,
     extensions,
+    directoryCount,
   };
 }
 
@@ -167,6 +169,44 @@ function collectExtensions(files: IndexedFile[]): string[] {
   const set = new Set<string>();
   for (const f of files) if (f.extKey) set.add(f.extKey);
   return Array.from(set).sort();
+}
+
+/**
+ * Count the total number of distinct directories discovered while
+ * indexing.
+ *
+ * Implementation notes:
+ *  - We derive the count from the same `IndexedFile[]` the rest of
+ *    the indexer uses so the value is always consistent with the
+ *    tree and `rootFolders` fields (no separate walk is needed).
+ *  - Every unique parent path is a directory. The implicit repo
+ *    root (the empty string) is also counted so the value is
+ *    `>= 1` for any non-empty repository.
+ *  - For a file at the repo root (no `/` in the path) we add the
+ *    empty-string root entry exactly once.
+ */
+function countDirectories(files: IndexedFile[]): number {
+  const dirs = new Set<string>();
+  if (files.length === 0) return 0;
+  // The implicit repo root is always a directory as soon as we
+  // have at least one indexed file.
+  dirs.add("");
+  for (const f of files) {
+    const idx = f.path.lastIndexOf("/");
+    if (idx < 0) continue; // file lives at the root — already counted
+    // Walk every ancestor directory so deeply nested files
+    // contribute to all the intermediate folders.
+    let cursor = 0;
+    let next = f.path.indexOf("/", cursor);
+    while (next !== -1) {
+      dirs.add(f.path.slice(0, next));
+      cursor = next + 1;
+      next = f.path.indexOf("/", cursor);
+    }
+    // Add the immediate parent (which may be the deepest folder).
+    dirs.add(f.path.slice(0, idx));
+  }
+  return dirs.size;
 }
 
 /** Walk the tree, returning up to `max` file nodes (DFS). */

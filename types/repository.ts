@@ -88,6 +88,13 @@ export interface RepoIndex {
   rootFolders: string[];
   /** All distinct file extensions. */
   extensions: string[];
+  /**
+   * Total number of distinct directories discovered while
+   * indexing. Counts every unique folder path produced by the
+   * tree walk (including the implicit root), so it is always
+   * `>= 1` for a non-empty repository.
+   */
+  directoryCount: number;
 }
 
 /** Bundle returned by the /api/analyze route. */
@@ -97,6 +104,36 @@ export interface AnalysisResult {
   index: RepoIndex;
   commits: RepoCommit[];
   fetchedAt: string; // ISO
+  /**
+   * ISO timestamp marking when the analysis completed on the
+   * backend. Mirrors the existing `fetchedAt` field but is
+   * explicitly the *completion* time of the analysis pipeline
+   * (index built, commit list resolved), so consumers can
+   * distinguish "we finished fetching" from "we finished
+   * analysing".
+   */
+  analyzedAt: string; // ISO
+  /**
+   * Total backend analysis duration in milliseconds, measured
+   * from the moment the analyse request starts processing to
+   * the moment the response is ready to ship. Includes GitHub
+   * fetch + tree build + commit fetch.
+   */
+  analysisDurationMs: number;
+  /**
+   * Estimated total lines of code across all indexed source
+   * files. Binary, image, video, archive, lock, and other
+   * non-source files are excluded by the indexer upstream, so
+   * the value only reflects files that look like real source.
+   *
+   * Estimated rather than counted: the backend does not fetch
+   * the decoded content of every file (one GitHub request per
+   * file would be prohibitive on a public analyse route). The
+   * value is derived from each file's `sizeBytes` and a
+   * language-specific "average characters per line" lookup, so
+   * it stays consistent with the existing `IndexedFile` shape.
+   */
+  linesOfCode: number;
 }
 
 /* -------------------------------------------------------------------------- */
