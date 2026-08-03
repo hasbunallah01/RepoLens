@@ -1,10 +1,10 @@
 import { HeroIllustration } from "./HeroIllustration";
-import { HeroSearch } from "./HeroSearch";
-import { SparkleIcon } from "./icons";
+import { Button } from "@/components/Button";
+import { RocketIcon, SparkleIcon } from "./icons";
 
 /**
- * Hero block for the home page: badge, headline, sub-copy, repository
- * search, and the illustration — two columns on desktop, stacked on mobile.
+ * Hero block for the home page: badge, headline, sub-copy, primary CTA,
+ * and the illustration — two columns on desktop, stacked on mobile.
  */
 export function Hero() {
   return (
@@ -26,7 +26,10 @@ export function Hero() {
         </p>
 
         <div className="mt-8 w-full max-w-xl">
-          <HeroSearch />
+          <Button href="/analyze" size="lg">
+            <RocketIcon className="h-4 w-4" />
+            Analyze Repository
+          </Button>
         </div>
       </div>
 
