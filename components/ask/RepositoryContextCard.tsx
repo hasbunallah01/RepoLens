@@ -1,20 +1,28 @@
-import { CalendarIcon, CodeIcon, FileIcon, GlobeIcon, LayersIcon } from "@/components/icons";
-import { MOCK_REPO_CONTEXT } from "@/lib/mock-ask-data";
+"use client";
 
-/**
- * "Repository Context" sidebar card — key indexing figures.
- *
- * Indexed Files lines up with RepoIndex.totalFiles; the rest (Code Lines,
- * Languages, Last Indexed, Repository Size) have no backend field yet —
- * see PR notes.
- */
-export function RepositoryContextCard() {
+import { CalendarIcon, CodeIcon, FileIcon, GlobeIcon, LayersIcon } from "@/components/icons";
+
+interface RepositoryContextCardProps {
+  indexedFiles: number;
+  codeLines: number;
+  languageCount: number;
+  lastIndexed: string;
+  repositorySize: string;
+}
+
+export function RepositoryContextCard({
+  indexedFiles,
+  codeLines,
+  languageCount,
+  lastIndexed,
+  repositorySize,
+}: RepositoryContextCardProps) {
   const rows = [
-    { icon: <FileIcon className="h-4 w-4 text-slate-400" />, label: "Indexed Files", value: MOCK_REPO_CONTEXT.indexedFiles.toLocaleString() },
-    { icon: <CodeIcon className="h-4 w-4 text-slate-400" />, label: "Code Lines", value: MOCK_REPO_CONTEXT.codeLines },
-    { icon: <GlobeIcon className="h-4 w-4 text-slate-400" />, label: "Languages", value: String(MOCK_REPO_CONTEXT.languageCount) },
-    { icon: <CalendarIcon className="h-4 w-4 text-slate-400" />, label: "Last Indexed", value: MOCK_REPO_CONTEXT.lastIndexed },
-    { icon: <LayersIcon className="h-4 w-4 text-slate-400" />, label: "Repository Size", value: MOCK_REPO_CONTEXT.repositorySize },
+    { icon: <FileIcon className="h-4 w-4 text-slate-400" />, label: "Indexed Files", value: indexedFiles.toLocaleString() },
+    { icon: <CodeIcon className="h-4 w-4 text-slate-400" />, label: "Code Lines", value: codeLines.toLocaleString() },
+    { icon: <GlobeIcon className="h-4 w-4 text-slate-400" />, label: "Languages", value: String(languageCount) },
+    { icon: <CalendarIcon className="h-4 w-4 text-slate-400" />, label: "Last Indexed", value: lastIndexed },
+    { icon: <LayersIcon className="h-4 w-4 text-slate-400" />, label: "Repository Size", value: repositorySize },
   ];
 
   return (
