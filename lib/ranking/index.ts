@@ -52,3 +52,15 @@ export {
   MAX_CONTENT_CHARS,
   type ContentScore,
 } from "./content";
+export {
+  extractSymbols,
+  extractDocComment,
+  extractImports,
+  extractEnvVarRefs,
+  extractAll,
+  tokenizeSymbolName,
+  questionSymbolCoverage,
+  SYMBOL_SCAN_MAX_CHARS,
+  DOC_COMMENT_MAX_CHARS,
+  type ExtractedSymbols,
+} from "./symbols";
