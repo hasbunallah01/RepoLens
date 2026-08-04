@@ -64,3 +64,14 @@ export {
   DOC_COMMENT_MAX_CHARS,
   type ExtractedSymbols,
 } from "./symbols";
+export {
+  inDegreeRanking,
+  expandRelated,
+  combinedPopularityBump,
+  POPULARITY_MAX_BUMP,
+  POPULARITY_LOG_MULTIPLIER,
+  RELATED_BUMP,
+  RELATED_BUMP_CAP,
+  type PopularityOptions,
+  type RelatedOptions,
+} from "./popularity";
