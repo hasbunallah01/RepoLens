@@ -40,12 +40,16 @@ import { errorResponse, okResponse, withApiHandler } from "@/lib/api";
 import { parseGitHubUrl } from "@/lib/github/parse-url";
 import { GitHubApiError } from "@/lib/github/client";
 import { loadRepository } from "@/lib/repo/load-repository";
-import { fetchRankedFileContents, rankRelevantFiles } from "@/lib/ranking";
+import {
+  fetchRankedFileContents,
+  rankRelevantFilesHybrid,
+} from "@/lib/ranking";
 import { buildProductionContextFromMetadata } from "@/lib/context";
 import { compressContextPackage } from "@/lib/paritok";
 import { generateAnswer } from "@/lib/openai";
 import { createRequestLogger } from "@/lib/log";
 import type { OpenAIUsage } from "@/lib/openai";
+import { fetchRepoFile } from "@/lib/github/api";
 
 // Fresh answer every call — never cache a chat response.
 export const dynamic = "force-dynamic";
@@ -253,13 +257,41 @@ export const POST = withApiHandler(async (request: Request) => {
 
     // ------------------------------------------------------------
     //  Existing Ranking Engine
+    //  Wired through the hybrid (metadata + content) wrapper so
+    //  conceptual questions (architecture, design, overview) get a
+    //  README/docs boost, and weak metadata matches get a small
+    //  content-keyword fallback. The output shape is the same
+    //  RankResult, so the downstream pipeline (Context → Paritok
+    //  → OpenAI) is unchanged.
     // ------------------------------------------------------------
     log.logStage("ranking_started");
     const rankingStart = Date.now();
-    const ranked = rankRelevantFiles(question, index.files);
+    // Hook for the hybrid content fallback: read the first ~2000
+    // chars of a file. Per-file failures (404, decode) return null
+    // so a single missing file never aborts the scan.
+    const hybridContentFetcher = async (
+      path: string,
+    ): Promise<string | null> => {
+      try {
+        const content = await fetchRepoFile(owner, repo, path, metadata.defaultBranch);
+        return content;
+      } catch {
+        return null;
+      }
+    };
+    const ranked = await rankRelevantFilesHybrid(question, index.files, {
+      fetchContent: hybridContentFetcher,
+      // Bump the default 10 because the Context Builder below
+      // applies its own limit, and we want a wider net for the
+      // weak-case fallback.
+      limit: 25,
+    });
     log.logStageWithDuration("ranking_completed", Date.now() - rankingStart, {
       rankedCount: ranked.ranked.length,
       totalCandidates: ranked.totalCandidates,
+      contentFallbackExecuted: ranked.hybrid.contentFallbackExecuted,
+      contentMatched: ranked.hybrid.contentMatched,
+      conceptualBoosted: ranked.hybrid.conceptualBoosted.length,
     });
 
     const fileContents = await fetchRankedFileContents(owner, repo, ranked, {

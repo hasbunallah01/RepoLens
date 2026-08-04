@@ -37,3 +37,18 @@ export {
   fetchRankedFileContents,
   type FetchRankedContentsOptions,
 } from "./fetch-contents";
+export {
+  rankRelevantFilesHybrid,
+  HYBRID_DEFAULT_CONTENT_CHARS,
+  HYBRID_DEFAULT_WEAK_SCORE_THRESHOLD,
+  HYBRID_DEFAULT_WEAK_FILE_COUNT,
+  HYBRID_DEFAULT_MAX_CONTENT_SCAN,
+  type HybridRankOptions,
+  type HybridRankResult,
+} from "./hybrid";
+export {
+  scoreContent,
+  tokenizeContent,
+  MAX_CONTENT_CHARS,
+  type ContentScore,
+} from "./content";

@@ -118,10 +118,10 @@ describe("rankRelevantFiles", () => {
     );
   });
 
-  it("only includes the expected { file, score } fields (no extras)", () => {
+  it("only includes the expected { file, score, reason } fields (no extras)", () => {
     const result = rankRelevantFiles("auth", mockIndexedFiles);
     for (const m of result.ranked) {
-      expect(Object.keys(m).sort()).toEqual(["file", "score"]);
+      expect(Object.keys(m).sort()).toEqual(["file", "reason", "score"]);
     }
   });
 

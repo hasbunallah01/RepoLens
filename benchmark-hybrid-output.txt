@@ -1,0 +1,111 @@
+================================================================
+RepoLens — hybrid ranking benchmark
+Repository: hasbunallah01/kindred
+================================================================
+default branch: main
+description:    ‎A persistent AI relationship memory for creators powered by Minds.
+indexed files:  76
+
+================================================================
+Q1. Explain the architecture
+================================================================
+
+Metadata-only ranking (top 5):
+  (no matches)
+
+Hybrid ranking (top 5):
+   1. AGENTS.md                                                  60  Matched question keywords (boosted: conceptual doc)
+   2. README.md                                                  60  Matched question keywords (boosted: conceptual doc)
+
+Diagnostics:
+  contentFallbackExecuted: true
+  contentScanned:          25
+  contentMatched:          0
+  conceptualBoosted:       [AGENTS.md, README.md]
+  metadataTopScore:        60
+
+  ↑ surfaced by hybrid (not in metadata ranking):
+    - AGENTS.md
+    - README.md
+
+================================================================
+Q2. How does routing work?
+================================================================
+
+Metadata-only ranking (top 5):
+  (no matches)
+
+Hybrid ranking (top 5):
+   1. AGENTS.md                                                  71  Body contains keyword "work"
+   2. apps/agent/ecosystem.config.cjs                            71  Body contains keyword "work"
+   3. apps/agent/src/index.ts                                    71  Body contains keyword "work"
+   4. apps/agent/src/workers/mind-standing-check.worker.ts       71  Body contains keyword "work"
+
+Diagnostics:
+  contentFallbackExecuted: true
+  contentScanned:          25
+  contentMatched:          4
+  conceptualBoosted:       []
+  metadataTopScore:        0
+
+  ↑ surfaced by hybrid (not in metadata ranking):
+    - AGENTS.md
+    - apps/agent/ecosystem.config.cjs
+    - apps/agent/src/index.ts
+    - apps/agent/src/workers/mind-standing-check.worker.ts
+
+================================================================
+Q3. How does data fetching work?
+================================================================
+
+Metadata-only ranking (top 5):
+  (no matches)
+
+Hybrid ranking (top 5):
+   1. apps/agent/src/minds/sse-listener.ts                       82  Body contains 2 question keywords (data, fetch)
+   2. apps/agent/src/workers/mind-standing-check.worker.ts       82  Body contains 2 question keywords (data, work)
+   3. AGENTS.md                                                  58  Body contains keyword "work"
+   4. apps/agent/ecosystem.config.cjs                            58  Body contains keyword "work"
+   5. apps/agent/src/index.ts                                    58  Body contains keyword "work"
+
+Diagnostics:
+  contentFallbackExecuted: true
+  contentScanned:          25
+  contentMatched:          6
+  conceptualBoosted:       []
+  metadataTopScore:        0
+
+  ↑ surfaced by hybrid (not in metadata ranking):
+    - apps/agent/src/minds/sse-listener.ts
+    - apps/agent/src/workers/mind-standing-check.worker.ts
+    - AGENTS.md
+    - apps/agent/ecosystem.config.cjs
+    - apps/agent/src/index.ts
+    - apps/agent/src/workers/linking-code-expiry.worker.ts
+
+================================================================
+Q4. Show me the API routes
+================================================================
+
+Metadata-only ranking (top 5):
+   1. apps/web/app/api/auth/[...all]/route.ts                    38  Contains multiple matching keywords (api, route).
+   2. apps/web/app/api/insights/ask/route.ts                     38  Contains multiple matching keywords (api, route).
+   3. apps/web/app/api/telegram/link/route.ts                    38  Contains multiple matching keywords (api, route).
+   4. apps/web/app/api/telegram/webhook/route.ts                 38  Contains multiple matching keywords (api, route).
+
+Hybrid ranking (top 5):
+   1. apps/web/app/api/auth/[...all]/route.ts                    38  Contains multiple matching keywords (api, route).
+   2. apps/web/app/api/insights/ask/route.ts                     38  Contains multiple matching keywords (api, route).
+   3. apps/web/app/api/telegram/link/route.ts                    38  Contains multiple matching keywords (api, route).
+   4. apps/web/app/api/telegram/webhook/route.ts                 38  Contains multiple matching keywords (api, route).
+
+Diagnostics:
+  contentFallbackExecuted: false
+  contentScanned:          0
+  contentMatched:          0
+  conceptualBoosted:       []
+  metadataTopScore:        38
+
+================================================================
+Done.
+================================================================
