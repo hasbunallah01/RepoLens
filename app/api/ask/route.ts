@@ -53,6 +53,18 @@ export const runtime = "nodejs";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+/**
+ * Per-request Paritok timeout for `/api/ask`. The library default is
+ * 20s (see `DEFAULT_PARITOK_TIMEOUT_MS` in `lib/paritok/client.ts`),
+ * but real production payloads ship a few hundred KB of UTF-8 and
+ * upstream compression regularly exceeds 20s, surfacing as
+ * `TIMEOUT` errors. We override the per-request budget here to 60s
+ * (a 3x lift) so the regression clears while still bounding a hung
+ * upstream. The `lib/paritok/client.ts` default is intentionally
+ * left untouched so other call sites keep their existing behaviour.
+ */
+const PARITOK_REQUEST_TIMEOUT_MS = 60_000;
+
 /** Production-safe response payload for a successful `/api/ask` call. */
 interface AskResult {
   question: string;
@@ -311,9 +323,46 @@ export const POST = withApiHandler(async (request: Request) => {
     // ------------------------------------------------------------
     //  Existing Paritok compression client
     // ------------------------------------------------------------
-    log.logStage("paritok_request_started", { fileCount: pkg.files.length });
+
+    // Guard against the silent-fetch-failure mode documented in
+    // `lib/ranking/fetch-contents.ts`: a per-file fetch failure
+    // is dropped, which can leave us with an empty `fileContents`
+    // map. The Context Builder would then return `pkg.files = []`,
+    // and `buildParitokRequest` would ship `content: ""` to
+    // Paritok, which rejects it with HTTP 400 "Missing 'content'
+    // to compress." We refuse to send an empty package and surface
+    // a clear, log-friendly error instead.
+    if (pkg.files.length === 0) {
+      const emptyElapsed = 0;
+      diagnostics.paritok.elapsedMs = emptyElapsed;
+      diagnostics.paritok.originalBytes = paritokPayloadBytes;
+      diagnostics.paritok.timedOut = false;
+      logDiagnostics("paritok", {
+        ok: false,
+        elapsedMs: emptyElapsed,
+        code: "EMPTY_PACKAGE",
+        timeoutOccurred: false,
+        payloadBytes: paritokPayloadBytes,
+        payloadCharacters: paritokPayloadChars,
+        fileCount: 0,
+        contextErrors: contextResult.errors.length,
+      });
+      log.logStage("response_returned", { status: 502, code: "EMPTY_CONTEXT" });
+      return errorResponse(
+        "EMPTY_CONTEXT",
+        "No file content could be assembled for this question. Try a different repository or question.",
+        502,
+      );
+    }
+
+    log.logStage("paritok_request_started", {
+      fileCount: pkg.files.length,
+      timeoutMs: PARITOK_REQUEST_TIMEOUT_MS,
+    });
     const paritokStart = Date.now();
-    const compressed = await compressContextPackage(pkg);
+    const compressed = await compressContextPackage(pkg, {
+      timeoutMs: PARITOK_REQUEST_TIMEOUT_MS,
+    });
     const paritokElapsedMs = Date.now() - paritokStart;
     log.logStageWithDuration("paritok_response_received", paritokElapsedMs, {
       ok: compressed.ok,
