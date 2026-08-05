@@ -4,7 +4,11 @@
 
 # RepoLens
 
+[![Built with Paritok](https://img.shields.io/badge/Built%20with-Paritok-1f2d3d)](https://github.com/Paritok-official/paritok-4b-v1)
+
 > Understand any codebase with fewer tokens.
+
+Built with [Paritok](https://github.com/Paritok-official/paritok-4b-v1).
 
 RepoLens helps developers understand any GitHub repository by intelligently
 retrieving only the relevant code, compressing it through **Paritok**, and
@@ -140,6 +144,69 @@ RepoLens applies a two-stage optimization:
 
 The result is a dramatically smaller prompt that still contains all the
 information the model needs to answer accurately.
+
+---
+
+## Paritok Integration & Token Savings
+
+**Status: implemented and live** — this is not a mock or a planned feature.
+The integration lives in [`lib/paritok/`](lib/paritok) and is called from
+[`app/api/ask/route.ts`](app/api/ask/route.ts) on every real question asked
+through the `/ask` page.
+
+### How Paritok is integrated
+
+1. The Universal Retrieval Engine narrows a repository down to a small set
+   of relevant files for the question.
+2. The Context Builder assembles those files into a single text payload
+   (file path headers + file bodies).
+3. That payload, together with the user's question, is sent to Paritok:
+
+   ```
+   POST https://www.paritok.com/api/compress
+   Authorization: Bearer <PARITOK_API_KEY>
+   Content-Type:  application/json
+
+   {
+     "content": "<the assembled file payload>",
+     "query":   "<the user's question>",
+     "kind":    "file_read"
+   }
+   ```
+
+4. Paritok returns a compressed version of the content (`compressed`),
+   plus `gpu_available` and a `schemaVersion`. RepoLens sends the
+   *compressed* text — not the raw payload — to OpenAI for answer
+   generation.
+5. Failure modes (missing API key, network error, non-2xx response,
+   malformed body, timeout) are all typed and handled explicitly; on
+   failure the request returns a `502`/`503` error rather than silently
+   falling back to sending uncompressed context.
+
+See [`lib/paritok/README.md`](lib/paritok/README.md) for the full
+request/response contract.
+
+### How token savings are measured
+
+Every `/api/ask` request computes and logs a compression ratio for that
+specific call, on the server side:
+
+- `originalBytes` — UTF-8 byte length of the assembled payload sent *into*
+  Paritok
+- `compressedBytes` — UTF-8 byte length of the text Paritok returns
+- `compressionRatio = compressedBytes / originalBytes` (lower is better;
+  e.g. `0.4` means the compressed payload is 40% of the original size)
+
+These numbers, along with request timing and OpenAI token usage, are
+emitted as a structured `[diagnostics]` log line per request (see
+`app/api/ask/route.ts`) and — outside production — also returned inline
+in the API response for local inspection.
+
+**What this is not (yet):** there is no public-facing analytics
+dashboard that aggregates compression ratios across requests. Today,
+token savings are per-request, server-log-visible numbers, not a
+polished UI metric. A dashboard surfacing these numbers is on the
+roadmap but not built — see [Roadmap](#roadmap) below.
 
 ---
 
@@ -315,6 +382,29 @@ that requires no embeddings, no vector databases, and no external services.
 
 Paritok sits at the core of this pipeline, compressing the retrieved context
 to maximize token efficiency without sacrificing answer quality.
+
+---
+
+## Roadmap
+
+**Implemented and working today:**
+
+- Universal Retrieval Engine (metadata ranking, conceptual doc boost,
+  symbol search, import graph traversal, popularity scoring, body/doc
+  keyword coverage, env-var relevance, related-file expansion)
+- Live Paritok compression on every `/ask` request
+- Live OpenAI answer generation grounded in the compressed context
+- Per-request compression-ratio and token-usage diagnostics (server logs
+  + local-dev API response)
+
+**Planned, not yet built:**
+
+- A public-facing dashboard that aggregates token-savings and
+  compression-ratio metrics across requests (today these are per-request
+  server-log values only)
+
+If you notice this list drift out of date, please open an issue —
+it should always match what's actually in `main`.
 
 ---
 
