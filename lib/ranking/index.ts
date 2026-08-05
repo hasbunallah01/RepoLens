@@ -75,3 +75,17 @@ export {
   type PopularityOptions,
   type RelatedOptions,
 } from "./popularity";
+export {
+  rankRelevantFilesUniversal,
+  UNIVERSAL_DEFAULT_CONTENT_SCAN_CAP,
+  UNIVERSAL_DEFAULT_WEAK_SCORE_THRESHOLD,
+  UNIVERSAL_DEFAULT_WEAK_FILE_COUNT,
+  UNIVERSAL_DEFAULT_BODY_SCAN_CHARS,
+  SYMBOL_MATCH_WEIGHT,
+  ENV_VAR_REF_BUMP_PER_REF,
+  ENV_VAR_REF_BUMP_CAP,
+  DOC_COMMENT_BODY_RATIO,
+  type UniversalRankOptions,
+  type UniversalRankResult,
+  type UniversalRankDiagnostics,
+} from "./universal";

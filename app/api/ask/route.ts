@@ -42,7 +42,7 @@ import { GitHubApiError } from "@/lib/github/client";
 import { loadRepository } from "@/lib/repo/load-repository";
 import {
   fetchRankedFileContents,
-  rankRelevantFilesHybrid,
+  rankRelevantFilesUniversal,
 } from "@/lib/ranking";
 import { buildProductionContextFromMetadata } from "@/lib/context";
 import { compressContextPackage } from "@/lib/paritok";
@@ -266,10 +266,10 @@ export const POST = withApiHandler(async (request: Request) => {
     // ------------------------------------------------------------
     log.logStage("ranking_started");
     const rankingStart = Date.now();
-    // Hook for the hybrid content fallback: read the first ~2000
+    // Hook for the universal content scan: read the first ~2000
     // chars of a file. Per-file failures (404, decode) return null
     // so a single missing file never aborts the scan.
-    const hybridContentFetcher = async (
+    const universalContentFetcher = async (
       path: string,
     ): Promise<string | null> => {
       try {
@@ -279,8 +279,8 @@ export const POST = withApiHandler(async (request: Request) => {
         return null;
       }
     };
-    const ranked = await rankRelevantFilesHybrid(question, index.files, {
-      fetchContent: hybridContentFetcher,
+    const ranked = await rankRelevantFilesUniversal(question, index.files, {
+      fetchContent: universalContentFetcher,
       // Bump the default 10 because the Context Builder below
       // applies its own limit, and we want a wider net for the
       // weak-case fallback.
@@ -289,9 +289,9 @@ export const POST = withApiHandler(async (request: Request) => {
     log.logStageWithDuration("ranking_completed", Date.now() - rankingStart, {
       rankedCount: ranked.ranked.length,
       totalCandidates: ranked.totalCandidates,
-      contentFallbackExecuted: ranked.hybrid.contentFallbackExecuted,
-      contentMatched: ranked.hybrid.contentMatched,
-      conceptualBoosted: ranked.hybrid.conceptualBoosted.length,
+      contentFallbackExecuted: ranked.universal.contentFallbackExecuted,
+      contentMatched: ranked.universal.contentFetched,
+      conceptualBoosted: ranked.universal.conceptualBoosted.length,
     });
 
     const fileContents = await fetchRankedFileContents(owner, repo, ranked, {
