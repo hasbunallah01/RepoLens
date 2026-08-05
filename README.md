@@ -6,164 +6,315 @@
 
 > Understand any codebase with fewer tokens.
 
-RepoLens helps developers understand any GitHub repository by retrieving only
-the relevant code before sending requests through **Paritok**, reducing token
-usage while maintaining answer quality.
+RepoLens helps developers understand any GitHub repository by intelligently
+retrieving only the relevant code, compressing it through **Paritok**, and
+generating accurate answers — all while using significantly fewer tokens than
+sending entire repositories to an LLM.
+
+Paritok is the core optimization layer of this project — not an afterthought.
 
 Built for the **Build with Paritok: The Token-Efficiency Hackathon**.
 
 ---
 
-## Vision
+## Features
 
-Developers waste money and time because AI assistants repeatedly receive huge
-amounts of repository context that isn't actually needed. RepoLens treats token
-efficiency as a first-class concern: we analyze the structure of a repo,
-retrieve only the slices of code that matter for a given question, and then
-optimize that context through Paritok before any model is called.
-
-**Paritok is the core optimization layer of this project — not an afterthought.**
-
----
-
-## Planned Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Next.js 15 App                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  Home / About│  │  Analyze UI  │  │   API Routes      │  │
-│  │  (Phase 1 ✓) │  │  (Phase 2 ✓) │  │  /api/health ✓    │  │
-│  │              │  │              │  │  /api/analyze ✓   │  │
-│  └──────────────┘  └──────────────┘  └──────────────┬──────┘  │
-└─────────────────────────────────────────────────────┼────────┘
-                                                      │
-                  ┌───────────────────────────────────┘
-                  ▼
-        ┌─────────────────────┐
-        │  GitHub API Client  │  ◀── Phase 2 ✓
-        │  (metadata+tree)    │      metadata, tree, commits
-        └──────────┬──────────┘
-                   │
-                   ▼
-        ┌─────────────────────┐
-        │  Indexer            │  ◀── Phase 2 ✓
-        │  (filter + language)│      ignore rules, language map
-        └──────────┬──────────┘
-                   │
-                   ▼
-        ┌─────────────────────┐
-        │  Local Search       │  ◀── Phase 2 ✓
-        └──────────┬──────────┘
-                   │
-                   ▼
-        ┌─────────────────────┐
-        │  Paritok Optimizer  │  ◀── Paritok API (Phase 3)
-        │  (token reduction)  │
-        └──────────┬──────────┘
-                   │
-                   ▼
-        ┌─────────────────────┐
-        │   LLM (OpenAI)      │  ◀── OpenAI (Phase 3)
-        └──────────┬──────────┘
-                   │
-                   ▼
-        ┌─────────────────────┐
-        │  Prompt Analytics   │  ◀── Phase 3
-        └─────────────────────┘
-```
-
-### Tech Stack
-
-- **Frontend:** Next.js 15 (App Router) · TypeScript (strict) · Tailwind CSS
-- **Backend:** Next.js API Routes
-- **Phase 2 integrations:** GitHub REST API (metadata, tree, commits)
-- **Future integrations (placeholders in Phase 1):** Paritok · OpenAI
-
-### Repository Layout
-
-```
-app/         # App Router routes (home, about, analyze, api/analyze)
-components/  # Reusable presentational + analyze components
-lib/         # Pure utilities
-  github/    # URL parser, API client, typed endpoints
-  indexer/   # Ignore rules, language map, build-index
-  search/    # Local file search
-  cache.ts   # Session-scoped result cache
-hooks/       # useRepoAnalysis
-types/       # Shared TypeScript types
-public/      # Static assets
-styles/      # Global styles (currently in app/globals.css)
-docs/        # Additional documentation
-```
+- **Analyze any public GitHub repository** — enter a repo URL and start asking questions
+- **Intelligent repository indexing** — static analysis builds a rich metadata layer over every file
+- **Universal Retrieval Engine** — combines multiple lightweight retrieval strategies without embeddings or vector databases
+- **Symbol extraction** — identifies classes, functions, types, and exports across the codebase
+- **Import graph analysis** — maps dependency chains to surface transitively relevant files
+- **Popularity-based ranking** — scores files by how frequently they're imported or referenced
+- **Related-file expansion** — broadens results to include sibling modules and co-located utilities
+- **Hybrid ranking pipeline** — fuses metadata, content, symbol, graph, and popularity signals into a single relevance score
+- **Context compression with Paritok** — token-level compression that preserves meaning while reducing context size
+- **AI-powered repository Q&A** — ask natural language questions and get grounded answers from the actual codebase
+- **Interactive repository exploration** — browse files, language breakdown, commit history, and file tree
+- **Clean Next.js interface** — responsive, fast, and minimal
 
 ---
 
-## Development Roadmap
+## Architecture
 
-| Phase | Scope | Status |
-|------:|-------|--------|
-| **1** | Project foundation & scaffolding (UI shell, design system, docs) | ✅ Done |
-| **2** | GitHub repository ingestion + smart retrieval of relevant files | ✅ Done |
-| **3A** | Question interface (textarea, examples, char counter, recent list) | ✅ Done |
-| **3B** | Paritok-powered retrieval + OpenAI Q&A | 🔜 Planned |
-| **3C** | Prompt analytics dashboard | 🔜 Planned |
-| **4** | Polish, deploy, demo for hackathon submission | 🔜 Planned |
+```
+GitHub Repository
+        ↓
+Repository Analysis
+  (metadata, tree, commits)
+        ↓
+Repository Index
+  (file list, language map, ignore rules)
+        ↓
+Universal Retrieval Engine
+  ├── Metadata ranking
+  ├── Conceptual doc boost
+  ├── Symbol search
+  ├── Import graph traversal
+  ├── Popularity scoring
+  ├── Body keyword coverage
+  ├── Doc-comment keyword coverage
+  ├── Env-var relevance
+  └── Related-file expansion
+        ↓
+    Hybrid ranking
+        ↓
+  Context Builder
+        ↓
+Paritok Compression
+        ↓
+      OpenAI
+        ↓
+Answer Generation
+```
+
+Retrieval happens **before** Paritok compression. The Universal Retrieval
+Engine selects only the most relevant files for the specific question, then
+Paritok compresses that already-narrow context to minimize token usage before
+sending it to the LLM.
+
+---
+
+## Universal Retrieval
+
+RepoLens replaces traditional embedding-based retrieval with a set of
+lightweight, composable strategies that work without vector databases or
+external services:
+
+| Strategy | What it does |
+|---|---|
+| **Metadata ranking** | Scores files based on filename, folder path, file extension, and keyword frequency |
+| **Conceptual doc boost** | Surfaces README, architecture docs, and design docs for high-level questions |
+| **Symbol search** | Finds files that define or reference specific classes, functions, types, and exports |
+| **Import graph traversal** | Follows dependency chains to include upstream imports and downstream dependents |
+| **Popularity scoring** | Ranks files by import in-degree — files referenced by many others are structurally important |
+| **Body keyword coverage** | Scans file contents for question-relevant keywords |
+| **Doc-comment keyword coverage** | Weighted 1.2× body coverage for JSDoc/TSDoc blocks (denser signal than body text) |
+| **Env-var relevance** | Surfaces files that reference `process.env` for config-related questions |
+| **Related-file expansion** | Adds sibling modules and co-located utilities from the import graph |
+
+All signals are combined in a single deterministic pass with bounded I/O —
+at most 50 files are read per call, in parallel, with per-file failure
+isolation.
+
+This approach handles conceptual questions effectively:
+
+- *"Explain the architecture"*
+- *"How does routing work?"*
+- *"Where is authentication handled?"*
+- *"How does data flow through the system?"*
+- *"Where are environment variables used?"*
+- *"Summarize this repository"*
+
+Without requiring embeddings, vector stores, or expensive pre-computation.
+See [docs/universal-retrieval-design.md](docs/universal-retrieval-design.md)
+for the full design document.
+
+---
+
+## Token Efficiency
+
+```
+Repository
+    ↓
+Retrieve only relevant files
+  (Universal Retrieval Engine)
+    ↓
+Build context
+  (Context Builder — formatting, truncation, file markers)
+    ↓
+Compress with Paritok
+  (token-level optimization — remove noise, preserve semantics)
+    ↓
+Send optimized prompt
+    ↓
+Generate answer
+  (OpenAI)
+```
+
+Traditional approaches send entire repositories — or large file subsets —
+to the LLM, burning thousands of tokens on files irrelevant to the question.
+RepoLens applies a two-stage optimization:
+
+1. **Retrieval** — the Universal Retrieval Engine narrows the repository to the most relevant files for the specific query
+2. **Compression** — Paritok compresses the retrieved context, preserving semantic meaning while removing redundant tokens
+
+The result is a dramatically smaller prompt that still contains all the
+information the model needs to answer accurately.
+
+---
+
+## Tech Stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript (strict)
+- **UI:** Tailwind CSS, Lucide React icons
+- **Testing:** Vitest
+- **Formatting:** Prettier, ESLint
+- **Compression:** [Paritok](https://www.paritok.com/)
+- **AI:** OpenAI API
+- **GitHub Integration:** GitHub REST API (metadata, tree, commits)
+
+---
+
+## Repository Structure
+
+```
+repolens/
+├── app/                          # Next.js App Router
+│   ├── about/                    # About page
+│   ├── analyze/                  # Repository analysis page
+│   ├── ask/                      # Q&A conversation page
+│   ├── dev/paritok/              # Paritok dev mock page
+│   └── api/
+│       ├── analyze/              # POST — analyze a repository
+│       ├── ask/                  # POST — ask a question
+│       ├── health/               # GET — health check
+│       └── dev/
+│           ├── openai/           # Dev OpenAI endpoint
+│           └── paritok/          # Dev Paritok endpoint
+├── components/                   # React components
+│   ├── about/                    # About page sections
+│   ├── analyze/                  # Analysis UI components
+│   └── ask/                      # Q&A UI components
+├── docs/                         # Documentation
+├── hooks/                        # React hooks (useRepoAnalysis)
+├── lib/
+│   ├── api/                      # Client-side API helpers
+│   ├── brand/                    # Colors and branding
+│   ├── cache.ts                  # Session-scoped result cache
+│   ├── config/                   # Configuration constants
+│   ├── context/                  # Context Builder — assembles context packages
+│   ├── github/                   # GitHub API client, URL parser
+│   ├── indexer/                  # Repository analysis and indexing
+│   ├── integrations.ts           # Integration utilities
+│   ├── log/                      # Structured logging
+│   ├── mock-*.ts                 # Mock data for development
+│   ├── openai/                   # OpenAI client and types
+│   ├── paritok/                  # Paritok compression service
+│   ├── pipeline/                 # Context Builder → Paritok orchestrator
+│   ├── ranking/                  # Universal Retrieval Engine
+│   │   ├── universal.ts          #   Orchestrator (all signals)
+│   │   ├── hybrid.ts             #   Hybrid ranking combiner
+│   │   ├── rank.ts               #   Metadata-based ranking
+│   │   ├── scoring.ts            #   Individual scoring signals
+│   │   ├── symbols.ts            #   Symbol extraction and search
+│   │   ├── graph.ts              #   Import graph construction and traversal
+│   │   ├── popularity.ts         #   In-degree ranking and related-file expansion
+│   │   ├── content.ts            #   Body keyword coverage
+│   │   ├── tokens.ts             #   Query tokenization
+│   │   ├── explain.ts            #   Rank reason explanations
+│   │   └── cache.ts              #   Ranking cache
+│   ├── repo/                     # Repository loading
+│   └── search/                   # Local file search
+├── public/                       # Static assets
+├── styles/                       # Global styles
+└── types/                        # Shared TypeScript types
+```
+
+---
+
+## Documentation
+
+- [Universal Retrieval Design](docs/universal-retrieval-design.md) — full design document for the retrieval engine
+- [Architecture Overview](docs/ARCHITECTURE.md) — high-level system architecture
+- [Deployment Guide](docs/DEPLOYMENT.md) — environment variables, build commands, troubleshooting
+- [Startup Checklist](docs/STARTUP-CHECKLIST.md) — step-by-step deployment verification
+- [Ranking Engine](lib/ranking/README.md) — scoring signals, API, extensibility
+- [Context Builder → Paritok Pipeline](lib/pipeline/README.md) — orchestrator flow and API
+- [Paritok Compression Service](lib/paritok/README.md) — request/response format, error handling
 
 ---
 
 ## Getting Started
 
+### Prerequisites
+
+- Node.js 18+
+- npm
+- An OpenAI API key
+- A [Paritok](https://www.paritok.com/) API key
+- A GitHub personal access token (for higher rate limits)
+
+### Installation
+
 ```bash
-# Install dependencies
+git clone https://github.com/hasbunallah01/RepoLens.git
+cd repolens
 npm install
-
-# Run the dev server
-npm run dev
-
-# Type-check, lint, and format
-npm run type-check
-npm run lint
-npm run format
 ```
 
-Then open <http://localhost:3000>.
+### Configuration
 
-> The current build renders the home, about, analyze, and ask pages. Phase 2
-> fetches repository metadata + tree from the GitHub API, filters out noise
-> (binaries, lockfiles, build output, etc.), and provides local search.
-> Phase 3A adds the question interface at `/ask` — a focused developer panel
-> with a large textarea, example prompts, character counter, and a sidebar
-> of recent questions. Submissions are echoed to the browser console only;
-> Paritok optimization and AI Q&A are intentionally not implemented yet —
-> they arrive in Phase 3B.
+Copy the environment template and fill in your keys:
+
+```bash
+cp .env.example .env.local
+```
+
+Required variables:
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+PARITOK_API_KEY=your_paritok_api_key
+GITHUB_TOKEN=your_github_token
+```
+
+### Running
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Scripts
+
+```bash
+npm run dev          # Start dev server
+npm run build        # Production build
+npm run start        # Start production server
+npm run type-check   # TypeScript type-check
+npm run lint         # ESLint
+npm run format       # Prettier
+npm test             # Run Vitest test suite
+npm run test:watch   # Vitest in watch mode
+```
 
 ---
 
-## Built for the Build with Paritok Hackathon
+## Demo
 
-RepoLens is a hackathon project. The goal is to demonstrate that a
-deliberately small, Paritok-aware retrieval pipeline can deliver the same
-answer quality as a "throw the whole repo at the LLM" approach, at a fraction
-of the token cost.
+1. **Analyze a repository** — paste a public GitHub repository URL into the analyze page
+2. **Ask questions** — try questions like:
+   - "How does authentication work?"
+   - "Explain the overall architecture"
+   - "Where is the database connection configured?"
+3. **Observe the pipeline** — RepoLens retrieves only the relevant files, compresses them with Paritok, and generates an answer grounded in the actual codebase
+
+The retrieval step is transparent — you can see which files were selected
+and how they were ranked before compression occurs.
 
 ---
 
-## Deployment
+## Hackathon
 
-RepoLens is a Next.js 15 application designed to deploy to **Vercel**.
+RepoLens was built for the **Build with Paritok: The Token-Efficiency Hackathon**
+to demonstrate **retrieval-first AI** for code understanding.
 
-- **Deployment guide:** see [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for
-  required environment variables, build/install commands, Node.js version,
-  and troubleshooting.
-- **Post-deploy verification:** see
-  [`docs/STARTUP-CHECKLIST.md`](./docs/STARTUP-CHECKLIST.md) for the
-  step-by-step checklist that confirms a fresh deployment is healthy
-  (build, env vars, `/api/health`, `/api/analyze`).
-- **Environment variables:** the placeholder file at
-  [`.env.example`](./.env.example) lists every required and optional
-  variable. Copy it to `.env.local` for local development; production
-  secrets live in the hosting platform's environment-variable store.
+The key insight: instead of sending entire repositories to an LLM and hoping
+the model finds the right files, RepoLens retrieves the relevant context
+*first*, then uses Paritok to minimize token usage on the already-optimized
+selection.
+
+This two-stage approach — intelligent retrieval followed by compression —
+delivers more accurate answers at a fraction of the token cost of naive
+full-repository ingestion. The Universal Retrieval Engine combines metadata,
+symbol extraction, import graph traversal, popularity scoring, content
+analysis, and related-file expansion into a single deterministic pipeline
+that requires no embeddings, no vector databases, and no external services.
+
+Paritok sits at the core of this pipeline, compressing the retrieved context
+to maximize token efficiency without sacrificing answer quality.
 
 ---
 
